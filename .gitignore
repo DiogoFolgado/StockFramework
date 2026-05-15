@@ -1,0 +1,16 @@
+# Environment & secrets
+env/.env.local
+env/.env.development
+env/.env.production
+
+# Claude Code internals
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.suo
+*.user

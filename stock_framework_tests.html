@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>StockFramework — Scoring Engine Tests</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07070f;color:#e8e8f8;font-family:'Courier New',monospace;padding:28px;font-size:13px}
+h1{color:#d4a843;margin-bottom:6px;font-size:18px}
+.sub{color:#5a5a80;font-size:11px;margin-bottom:28px}
+.suite{margin-bottom:24px}
+.suite-title{color:#9b72cf;font-size:12px;letter-spacing:2px;margin-bottom:10px;border-bottom:1px solid #ffffff10;padding-bottom:6px}
+.test{display:flex;gap:12px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #ffffff08}
+.badge{flex-shrink:0;width:14px;height:14px;border-radius:50%;margin-top:1px}
+.pass{background:#4cbb8a}
+.fail{background:#e05555}
+.desc{flex:1;color:#9090b0}
+.detail{font-size:11px;color:#e05555;margin-top:3px}
+#summary{margin-top:28px;padding:14px 18px;border-radius:9px;font-size:13px}
+.sum-pass{background:rgba(76,187,138,.12);border:1px solid rgba(76,187,138,.3);color:#4cbb8a}
+.sum-fail{background:rgba(224,85,85,.12);border:1px solid rgba(224,85,85,.3);color:#e05555}
+</style>
+</head>
+<body>
+<h1>StockFramework — Scoring Engine Tests</h1>
+<div class="sub">Open browser console for verbose output. Tests run on the scoring logic extracted from stock_framework_v5_25.html.</div>
+<div id="output"></div>
+<div id="summary"></div>
+
+<script>
+// ─── Minimal stubs for functions used by the scoring engine ───────────────────
+function calcSMA(closes, period) {
+  if (!closes || closes.length < period) return null;
+  const slice = closes.slice(-period);
+  return slice.reduce((a, v) => a + v, 0) / period;
+}
+
+function calcRSI(closes, period) {
+  period = period || 14;
+  if (!closes || closes.length < period + 1) return null;
+  const slice = closes.slice(-(period + 1));
+  let gains = 0, losses = 0;
+  for (let i = 1; i < slice.length; i++) {
+    const diff = slice[i] - slice[i - 1];
+    if (diff > 0) gains += diff; else losses += Math.abs(diff);
+  }
+  gains /= period; losses /= period;
+  if (losses === 0) return 100;
+  return 100 - (100 / (1 + gains / losses));
+}
+
+function raw(obj) { return (obj && obj.raw != null) ? obj.raw : (typeof obj === 'number' ? obj : null); }
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Scoring engine (copied from stock_framework_v5_25.html) ──────────────────
+const PILLARS = [
+  {id:'fundamental', weight:0.30},
+  {id:'technical',   weight:0.35},
+  {id:'entropy',     weight:0.10},
+  {id:'semantic',    weight:0.25},
+];
+
+function scoreFundamental({q,p,m}) {
+  let score = 5.0;
+  const ins = [];
+  const pe = m['peBasicExclExtraTTM'] || m['peTTM'];
+  if (pe) {
+    if (pe < 0)       { score -= 0.5; ins.push(`Negative P/E`); }
+    else if (pe < 15) { score += 1.0; ins.push(`P/E ${pe.toFixed(1)}x — deep value`); }
+    else if (pe < 25) { score += 0.5; ins.push(`P/E ${pe.toFixed(1)}x — fair value`); }
+    else if (pe < 50) { ins.push(`P/E ${pe.toFixed(1)}x — growth premium`); }
+    else              { score -= 0.5; ins.push(`P/E ${pe.toFixed(1)}x — elevated`); }
+  }
+  const revG = m['revenueGrowthTTMYoy'];
+  if (revG != null) {
+    if (revG > 50)      { score += 1.5; ins.push(`Revenue +${revG.toFixed(1)}%`); }
+    else if (revG > 20) { score += 1.0; ins.push(`Revenue +${revG.toFixed(1)}%`); }
+    else if (revG > 5)  { score += 0.4; ins.push(`Revenue +${revG.toFixed(1)}%`); }
+    else if (revG > 0)  { ins.push(`Revenue +${revG.toFixed(1)}%`); }
+    else                { score -= 0.8; ins.push(`Revenue ${revG.toFixed(1)}%`); }
+  }
+  const gm = m['grossMarginTTM'];
+  if (gm != null) {
+    if (gm > 65)      { score += 1.2; ins.push(`Gross margin ${gm.toFixed(1)}%`); }
+    else if (gm > 40) { score += 0.7; ins.push(`Gross margin ${gm.toFixed(1)}%`); }
+    else if (gm > 20) { score += 0.2; ins.push(`Gross margin ${gm.toFixed(1)}%`); }
+    else              { score -= 0.4; ins.push(`Gross margin ${gm.toFixed(1)}%`); }
+  }
+  const roe = m['roeTTM'];
+  if (roe != null) {
+    if (roe > 30)      { score += 0.6; ins.push(`ROE ${roe.toFixed(1)}%`); }
+    else if (roe > 15) { score += 0.3; ins.push(`ROE ${roe.toFixed(1)}%`); }
+    else if (roe < 0)  { score -= 0.5; ins.push(`Negative ROE`); }
+  }
+  const de = m['debtEquityQuarterlyLastQ'];
+  if (de != null) {
+    if (de < 0.3)      { score += 0.4; }
+    else if (de < 1.0) {}
+    else if (de < 2.0) { score -= 0.3; }
+    else               { score -= 0.6; }
+  }
+  const cr = m['currentRatioQuarterly'];
+  if (cr != null) {
+    if (cr > 2.0)      { score += 0.4; }
+    else if (cr < 1.0) { score -= 0.5; }
+  }
+  const fcf = m['freeCashFlowPerShareTTM'];
+  if (fcf != null) {
+    if (fcf > 0)  { score += 0.5; }
+    else          { score -= 0.3; }
+  }
+  const s = Math.min(10, Math.max(0, score));
+  return { score: +s.toFixed(1), insights: ins.slice(0, 6) };
+}
+
+function scoreEntropy({q,m,p,candles}) {
+  let score = 6.5;
+  const ins = [];
+  const beta = m['beta'];
+  const h52  = m['52WeekHigh'];
+  const l52  = m['52WeekLow'];
+  if (beta != null) {
+    if (beta > 2.5)      { score -= 2.2; }
+    else if (beta > 1.8) { score -= 1.5; }
+    else if (beta > 1.2) { score -= 0.6; }
+    else if (beta > 0.5) { score += 0.4; }
+  }
+  if (h52 && l52 && l52 > 0) {
+    const rng = (h52 - l52) / l52;
+    if (rng > 1.5)      { score -= 1.5; }
+    else if (rng > 0.8) { score -= 0.8; }
+    else if (rng > 0.4) { score -= 0.2; }
+    else                { score += 0.4; }
+  }
+  if (candles && candles.closes && candles.closes.length >= 30) {
+    const closes = candles.closes;
+    const n = closes.length;
+    const returns = [];
+    for (let i = 1; i < n; i++) {
+      if (closes[i - 1] > 0) returns.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+    }
+    if (returns.length >= 20) {
+      const mean = returns.reduce((a, v) => a + v, 0) / returns.length;
+      const variance = returns.reduce((a, v) => a + (v - mean) ** 2, 0) / returns.length;
+      const annVol = Math.sqrt(variance * 252);
+      if (annVol < 0.15)      { score += 0.8; ins.push(`Vol ${(annVol*100).toFixed(0)}%`); }
+      else if (annVol < 0.25) { score += 0.3; ins.push(`Vol ${(annVol*100).toFixed(0)}%`); }
+      else if (annVol < 0.40) { score -= 0.5; ins.push(`Vol ${(annVol*100).toFixed(0)}%`); }
+      else if (annVol < 0.65) { score -= 1.2; ins.push(`Vol ${(annVol*100).toFixed(0)}%`); }
+      else                    { score -= 2.0; ins.push(`Vol ${(annVol*100).toFixed(0)}%`); }
+    }
+  }
+  const s = Math.min(10, Math.max(0, score));
+  return { score: +s.toFixed(1), insights: ins };
+}
+
+function composite(sc) { return PILLARS.reduce((a, p) => a + sc[p.id].score * p.weight, 0); }
+function signal(c) { return c >= 8.5 ? 'STRONG BUY' : c >= 7.2 ? 'BUY' : c >= 5.5 ? 'NEUTRAL' : c >= 4 ? 'SELL' : 'STRONG SELL'; }
+
+// ─── Test runner ──────────────────────────────────────────────────────────────
+let passed = 0, failed = 0;
+const suites = [];
+
+function suite(name, fn) {
+  const tests = [];
+  suites.push({ name, tests });
+  const currentSuite = tests;
+  const origAssert = window._assert;
+  window._assert = (desc, cond, detail) => {
+    currentSuite.push({ desc, pass: !!cond, detail: cond ? '' : (detail || '') });
+    if (cond) passed++; else failed++;
+  };
+  fn();
+  window._assert = origAssert;
+}
+
+function assert(desc, cond, detail) {
+  window._assert(desc, cond, detail);
+}
+
+function approx(a, b, tol = 0.15) { return Math.abs(a - b) <= tol; }
+
+// ─── Test suites ──────────────────────────────────────────────────────────────
+
+suite('scoreFundamental — baseline', () => {
+  const base = scoreFundamental({ q: {c:100}, p: {}, m: {} });
+  assert('No data returns 5.0', base.score === 5.0, `got ${base.score}`);
+});
+
+suite('scoreFundamental — P/E tiers', () => {
+  const low  = scoreFundamental({ q: {c:50}, p: {}, m: { peBasicExclExtraTTM: 10 } });
+  const fair = scoreFundamental({ q: {c:50}, p: {}, m: { peBasicExclExtraTTM: 20 } });
+  const high = scoreFundamental({ q: {c:50}, p: {}, m: { peBasicExclExtraTTM: 60 } });
+  const neg  = scoreFundamental({ q: {c:50}, p: {}, m: { peBasicExclExtraTTM: -5 } });
+  assert('Low P/E (<15) scores above fair P/E', low.score > fair.score, `${low.score} vs ${fair.score}`);
+  assert('Fair P/E scores above high P/E', fair.score > high.score, `${fair.score} vs ${high.score}`);
+  assert('Negative P/E scores below baseline 5.0', neg.score < 5.0, `got ${neg.score}`);
+});
+
+suite('scoreFundamental — revenue growth', () => {
+  const hyper  = scoreFundamental({ q:{c:50}, p:{}, m:{ revenueGrowthTTMYoy: 80 } });
+  const shrink = scoreFundamental({ q:{c:50}, p:{}, m:{ revenueGrowthTTMYoy: -10 } });
+  assert('Hypergrowth scores above baseline', hyper.score > 5.0, `got ${hyper.score}`);
+  assert('Shrinking revenue scores below baseline', shrink.score < 5.0, `got ${shrink.score}`);
+  assert('Hypergrowth beats shrinking', hyper.score > shrink.score);
+});
+
+suite('scoreFundamental — strong profile', () => {
+  const m = {
+    peBasicExclExtraTTM: 18,
+    revenueGrowthTTMYoy: 30,
+    grossMarginTTM: 70,
+    roeTTM: 35,
+    debtEquityQuarterlyLastQ: 0.2,
+    currentRatioQuarterly: 2.5,
+    freeCashFlowPerShareTTM: 5,
+  };
+  const r = scoreFundamental({ q:{c:200}, p:{}, m });
+  assert('Strong fundamental profile scores ≥ 8.0', r.score >= 8.0, `got ${r.score}`);
+  assert('Score is capped at 10', r.score <= 10, `got ${r.score}`);
+});
+
+suite('scoreFundamental — weak profile', () => {
+  const m = {
+    peBasicExclExtraTTM: -3,
+    revenueGrowthTTMYoy: -20,
+    grossMarginTTM: 5,
+    roeTTM: -15,
+    debtEquityQuarterlyLastQ: 3.5,
+    currentRatioQuarterly: 0.6,
+    freeCashFlowPerShareTTM: -2,
+  };
+  const r = scoreFundamental({ q:{c:10}, p:{}, m });
+  assert('Weak fundamental profile scores ≤ 3.0', r.score <= 3.0, `got ${r.score}`);
+  assert('Score is floored at 0', r.score >= 0, `got ${r.score}`);
+});
+
+suite('scoreEntropy — baseline without candles', () => {
+  const base = scoreEntropy({ q: {h:101,l:99}, p: {}, m: {} });
+  assert('No data returns near 6.5', approx(base.score, 6.5, 0.5), `got ${base.score}`);
+});
+
+suite('scoreEntropy — beta tiers', () => {
+  const low  = scoreEntropy({ q:{}, p:{}, m:{ beta: 0.7 } });
+  const mid  = scoreEntropy({ q:{}, p:{}, m:{ beta: 1.3 } });
+  const high = scoreEntropy({ q:{}, p:{}, m:{ beta: 2.0 } });
+  const xtr  = scoreEntropy({ q:{}, p:{}, m:{ beta: 3.0 } });
+  assert('Low beta scores higher than mid beta', low.score > mid.score, `${low.score} vs ${mid.score}`);
+  assert('Mid beta scores higher than high beta', mid.score > high.score, `${mid.score} vs ${high.score}`);
+  assert('Extreme beta scores lowest', xtr.score < high.score, `${xtr.score} vs ${high.score}`);
+});
+
+suite('scoreEntropy — candle realised volatility', () => {
+  // Simulate stable stock: closes drift up steadily with tiny noise
+  function makeCloses(n, dailyVol) {
+    const closes = [100];
+    for (let i = 1; i < n; i++) {
+      const r = (Math.random() - 0.5) * 2 * dailyVol;
+      closes.push(Math.max(1, closes[i-1] * (1 + r)));
+    }
+    return closes;
+  }
+  // Use deterministic seed by seeding returns manually
+  const stableCloses = Array.from({length:60}, (_, i) => 100 + i * 0.1); // ~0% daily vol
+  const volatileCloses = [];
+  for (let i = 0; i < 60; i++) volatileCloses.push(i % 2 === 0 ? 100 : 70); // ~30% daily swings
+
+  const stable   = scoreEntropy({ q:{}, p:{}, m:{}, candles:{ closes: stableCloses } });
+  const volatile_ = scoreEntropy({ q:{}, p:{}, m:{}, candles:{ closes: volatileCloses } });
+
+  assert('Stable closes give higher entropy score than volatile', stable.score > volatile_.score,
+    `stable=${stable.score} volatile=${volatile_.score}`);
+  assert('Volatile closes penalise score below 6.5', volatile_.score < 6.5, `got ${volatile_.score}`);
+  assert('Stable closes boost score above 6.5', stable.score > 6.5, `got ${stable.score}`);
+});
+
+suite('scoreEntropy — candle ignored when too few data points', () => {
+  const noCandles = scoreEntropy({ q:{}, p:{}, m:{ beta: 1.0 }, candles: null });
+  const shortCandles = scoreEntropy({ q:{}, p:{}, m:{ beta: 1.0 }, candles: { closes: [100,101,102] } });
+  assert('null candles and short candles produce same score', noCandles.score === shortCandles.score,
+    `null=${noCandles.score} short=${shortCandles.score}`);
+});
+
+suite('composite — weights sum correctly', () => {
+  const sc = {
+    fundamental: { score: 6.0 },
+    technical:   { score: 6.0 },
+    entropy:     { score: 6.0 },
+    semantic:    { score: 6.0 },
+  };
+  const comp = composite(sc);
+  assert('All 6.0 pillars → composite 6.0', approx(comp, 6.0, 0.01), `got ${comp.toFixed(3)}`);
+});
+
+suite('composite — weight asymmetry', () => {
+  const heavy_tech = composite({
+    fundamental: { score: 5.0 },
+    technical:   { score: 9.0 }, // 35% weight
+    entropy:     { score: 5.0 },
+    semantic:    { score: 5.0 },
+  });
+  const heavy_entr = composite({
+    fundamental: { score: 5.0 },
+    technical:   { score: 5.0 },
+    entropy:     { score: 9.0 }, // 10% weight
+    semantic:    { score: 5.0 },
+  });
+  assert('High technical (35%) beats high entropy (10%)', heavy_tech > heavy_entr,
+    `tech=${heavy_tech.toFixed(2)} entr=${heavy_entr.toFixed(2)}`);
+});
+
+suite('signal — tier boundaries', () => {
+  assert('8.5 → STRONG BUY',  signal(8.5) === 'STRONG BUY',  signal(8.5));
+  assert('7.2 → BUY',         signal(7.2) === 'BUY',          signal(7.2));
+  assert('5.5 → NEUTRAL',     signal(5.5) === 'NEUTRAL',      signal(5.5));
+  assert('4.0 → SELL',        signal(4.0) === 'SELL',         signal(4.0));
+  assert('3.9 → STRONG SELL', signal(3.9) === 'STRONG SELL',  signal(3.9));
+  assert('7.1 → NEUTRAL (not BUY)', signal(7.1) === 'NEUTRAL', signal(7.1));
+});
+
+suite('signal — boundary precision', () => {
+  assert('8.49 → BUY not STRONG BUY', signal(8.49) === 'BUY', signal(8.49));
+  assert('4.01 → SELL',               signal(4.01) === 'SELL', signal(4.01));
+});
+
+suite('escH — XSS prevention', () => {
+  assert('Escapes <script> tag', escH('<script>alert(1)</script>') === '&lt;script&gt;alert(1)&lt;/script&gt;');
+  assert('Escapes double quotes', escH('"hello"') === '&quot;hello&quot;');
+  assert('Escapes ampersand', escH('A&B') === 'A&amp;B');
+  assert('Safe strings pass through unchanged', escH('AAPL') === 'AAPL');
+});
+
+suite('calcRSI — overbought/oversold boundaries', () => {
+  // Flat price → RSI undefined territory, but all gains = RSI 100
+  const allUp = Array.from({length:30}, (_, i) => 100 + i);
+  const allDown = Array.from({length:30}, (_, i) => 100 - i * 0.5);
+  const rsiUp   = calcRSI(allUp, 14);
+  const rsiDown = calcRSI(allDown, 14);
+  assert('All up prices → RSI 100', rsiUp === 100, `got ${rsiUp}`);
+  assert('All down prices → RSI 0', rsiDown === 0, `got ${rsiDown}`);
+});
+
+suite('calcSMA — correctness', () => {
+  const closes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const sma5 = calcSMA(closes, 5);
+  const sma10 = calcSMA(closes, 10);
+  assert('SMA5 of 1-10 = 8.0', approx(sma5, 8.0, 0.001), `got ${sma5}`);
+  assert('SMA10 of 1-10 = 5.5', approx(sma10, 5.5, 0.001), `got ${sma10}`);
+  assert('SMA longer than array returns null', calcSMA(closes, 20) === null);
+});
+
+// ─── Render results ───────────────────────────────────────────────────────────
+const out = document.getElementById('output');
+suites.forEach(suite => {
+  const div = document.createElement('div');
+  div.className = 'suite';
+  div.innerHTML = `<div class="suite-title">${escH(suite.name)}</div>`;
+  suite.tests.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'test';
+    row.innerHTML = `<div class="badge ${t.pass ? 'pass' : 'fail'}"></div>
+      <div><div class="desc">${escH(t.desc)}</div>${!t.pass ? `<div class="detail">✗ ${escH(t.detail)}</div>` : ''}</div>`;
+    div.appendChild(row);
+  });
+  out.appendChild(div);
+});
+
+const sumEl = document.getElementById('summary');
+const allPassed = failed === 0;
+sumEl.className = allPassed ? 'sum-pass' : 'sum-fail';
+sumEl.textContent = allPassed
+  ? `✓ All ${passed} tests passed`
+  : `✗ ${failed} test${failed !== 1 ? 's' : ''} failed · ${passed} passed`;
+</script>
+</body>
+</html>
