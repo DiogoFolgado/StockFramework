@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
+
+:root {
+  --bg:      #0e0e1a;
+  --bg2:     #13131f;
+  --bg3:     #18182a;
+  --bg4:     #1e1e2e;
+  --border:  #2a2a42;
+  --border2: #3a3a5c;
+  --text:    #e8e8f0;
+  --text2:   #9898b8;
+  --text3:   #6868a0;
+  --gold:    #d4a843;
+  --gold2:   #f0c870;
+  --blue:    #4d9de0;
+  --green:   #4cbb8a;
+  --red:     #e85d5d;
+  --purple:  #9b72cf;
+  --radius:  10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-gold:       var(--gold);
+  --color-gold2:      var(--gold2);
+  --color-sfblue:     var(--blue);
+  --color-sfgreen:    var(--green);
+  --color-sfred:      var(--red);
+  --color-sfpurple:   var(--purple);
+  --color-bg2:        var(--bg2);
+  --color-bg3:        var(--bg3);
+  --color-bg4:        var(--bg4);
+  --color-border:     var(--border);
+  --color-border2:    var(--border2);
+  --color-text2:      var(--text2);
+  --color-text3:      var(--text3);
+}
