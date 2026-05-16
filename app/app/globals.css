@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
+@import "tailwindcss";
 
 :root {
   --bg:      #0e0e1a;
@@ -34,6 +34,24 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg2); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* Signal badges */
+.signal-badge {
+  display: inline-block;
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.sig-sb { color: #4cbb8a; border-color: #4cbb8a55; background: rgba(76,187,138,.1); }
+.sig-b  { color: #7ed4a0; border-color: #7ed4a055; background: rgba(126,212,160,.08); }
+.sig-n  { color: #d4a843; border-color: #d4a84355; background: rgba(212,168,67,.1); }
+.sig-s  { color: #e8935d; border-color: #e8935d55; background: rgba(232,147,93,.1); }
+.sig-ss { color: #e85d5d; border-color: #e85d5d55; background: rgba(232,93,93,.1); }
 
 @theme inline {
   --color-background: var(--bg);

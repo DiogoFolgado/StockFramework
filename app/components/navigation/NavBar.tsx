@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { MarketClock } from "./MarketClock";
 
 const NAV_ITEMS = [
   { href: "/",             label: "Home",        icon: "⌂" },
   { href: "/sectors",      label: "Sectors",     icon: "⬡" },
-  { href: "/history",      label: "Scores",      icon: "◎" },
+  { href: "/scores",       label: "Scores",      icon: "◎" },
   { href: "/sections",     label: "My Sections", icon: "▤" },
-  { href: "/news",         label: "News",        icon: "◈" },
   { href: "/how-it-works", label: "How It Works",icon: "?" },
+  { href: "/history",      label: "History",     icon: "⏱" },
+  { href: "/news",         label: "News",        icon: "◈" },
 ];
 
 const AUTH_ROUTES = ["/login", "/register"];
@@ -59,6 +61,8 @@ export function NavBar() {
             );
           })}
         </nav>
+
+        <MarketClock />
 
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}

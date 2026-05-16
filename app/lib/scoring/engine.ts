@@ -35,6 +35,9 @@ export interface Metrics {
   targetPriceMean?: number;
   targetPrice?: number;
   marketCapRaw?: number;
+  epsTTM?: number;
+  peForwardAnnual?: number;
+  dividendYieldIndicatedAnnual?: number;
 }
 
 export interface RecommendationTrend {

@@ -13,19 +13,21 @@ model User {
   password  String
   sections  Section[]
   history   AnalysisHistory[]
+  snapshots SectionSnapshot[]
   createdAt DateTime          @default(now())
 }
 
 model Section {
-  id        String     @id @default(cuid())
+  id        String            @id @default(cuid())
   userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  icon      String     @default("📊")
-  color     String     @default("#d4a843")
+  icon      String            @default("📊")
+  color     String            @default("#d4a843")
   positions Position[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  snapshots SectionSnapshot[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 }
 
 model Position {
@@ -38,6 +40,23 @@ model Position {
   quantity      Float?
   currency      String   @default("USD")
   addedAt       DateTime @default(now())
+}
+
+model SectionSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  sectionId    String
+  sectionName  String
+  date         String   // "YYYY-MM-DD"
+  avgChangePct Float
+  pnlEur       Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionId, date])
+  @@index([userId, date(sort: Desc)])
 }
 
 model AnalysisHistory {

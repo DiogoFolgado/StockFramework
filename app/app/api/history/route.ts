@@ -21,15 +21,22 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20"));
   const skip  = (page - 1) * limit;
 
-  const [records, total] = await Promise.all([
-    prisma.analysisHistory.findMany({
-      where:   { userId: session.user.id },
-      orderBy: { analyzedAt: "desc" },
-      skip,
-      take:    limit,
-    }),
-    prisma.analysisHistory.count({ where: { userId: session.user.id } }),
-  ]);
+  // Fetch all records sorted by score desc so the first occurrence per ticker
+  // is always the best score — then deduplicate in memory.
+  const all = await prisma.analysisHistory.findMany({
+    where:   { userId: session.user.id },
+    orderBy: { score: "desc" },
+  });
+
+  const seen = new Set<string>();
+  const deduped = all.filter(r => {
+    if (seen.has(r.ticker)) return false;
+    seen.add(r.ticker);
+    return true;
+  });
+
+  const total   = deduped.length;
+  const records = deduped.slice(skip, skip + limit);
 
   return NextResponse.json({ records, total, page, pages: Math.ceil(total / limit) });
 }

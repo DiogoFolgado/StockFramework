@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
 import { RISING_SECTORS } from "@/lib/sectors/data";
 import { fetchAllLite } from "@/lib/yahoo/client";
 import { runStockScoring } from "@/lib/scoring/engine";
@@ -19,7 +20,17 @@ export async function GET(req: NextRequest) {
   if (!sector) return new Response("Unknown sector", { status: 404 });
 
   const encoder = new TextEncoder();
-  const candidates = sector.candidates.slice(0, 60);
+  const candidates = sector.candidates.slice(0, 200);
+  const userId = session.user.id;
+
+  // Tickers already saved to history today — skip re-inserting them
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const savedToday = await prisma.analysisHistory.findMany({
+    where: { userId, analyzedAt: { gte: todayStart } },
+    select: { ticker: true },
+  });
+  const savedTickers = new Set(savedToday.map((r) => r.ticker));
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -48,6 +59,23 @@ export async function GET(req: NextRequest) {
           const idx = i + j + 1;
           if (r.status === "fulfilled") {
             const { ticker, data, result } = r.value;
+
+            // Persist to history (skip if already saved today)
+            if (!savedTickers.has(ticker)) {
+              savedTickers.add(ticker);
+              prisma.analysisHistory.create({
+                data: {
+                  userId,
+                  ticker,
+                  companyName: data.p?.name ?? ticker,
+                  score:       result.comp,
+                  signal:      result.sig,
+                  sector:      data.p?.finnhubIndustry ?? data.p?.industry ?? sector.name,
+                  pillars:     result.scores as object,
+                },
+              }).catch(() => { /* non-blocking — ignore individual save failures */ });
+            }
+
             send({
               type: "tick",
               checked: idx,

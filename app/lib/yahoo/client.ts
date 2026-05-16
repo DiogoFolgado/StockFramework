@@ -87,6 +87,10 @@ export async function fetchMetrics(ticker: string): Promise<Metrics> {
     targetPriceMean:           raw(fd as Record<string, unknown>, "targetMeanPrice"),
     targetPriceLow:            raw(fd as Record<string, unknown>, "targetLowPrice"),
     targetPriceHigh:           raw(fd as Record<string, unknown>, "targetHighPrice"),
+    epsTTM:                    raw(ks as Record<string, unknown>, "trailingEps"),
+    peForwardAnnual:           raw(sd as Record<string, unknown>, "forwardPE"),
+    dividendYieldIndicatedAnnual: raw(sd as Record<string, unknown>, "dividendYield") != null
+      ? (raw(sd as Record<string, unknown>, "dividendYield")! * 100) : undefined,
   };
 }
 
@@ -149,10 +153,10 @@ export async function fetchAllLite(ticker: string): Promise<AnalysisInput> {
 }
 
 export async function searchTickers(query: string): Promise<Array<{ ticker: string; name: string; exchange: string; type: string }>> {
-  const d = await yf<{ finance?: { result?: Array<{ quotes?: Array<{ symbol?: string; longname?: string; shortname?: string; exchange?: string; quoteType?: string }> }> } }>(
+  const d = await yf<{ quotes?: Array<{ symbol?: string; longname?: string; shortname?: string; exchange?: string; quoteType?: string }> }>(
     `${PROXY}/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0&listsCount=0`
   );
-  const quotes = d?.finance?.result?.[0]?.quotes ?? [];
+  const quotes = d?.quotes ?? [];
   return quotes
     .filter((q) => q.symbol && (q.quoteType === "EQUITY" || q.quoteType === "CRYPTOCURRENCY"))
     .map((q) => ({

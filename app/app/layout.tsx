@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { NavBar } from "@/components/navigation/NavBar";
+import { AiAdvisor } from "@/components/chat/AiAdvisor";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main style={{ flex: 1, maxWidth: 1280, margin: "0 auto", width: "100%", padding: "24px 20px" }}>
             {children}
           </main>
+          <AiAdvisor />
         </SessionProvider>
       </body>
     </html>

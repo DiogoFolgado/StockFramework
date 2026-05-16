@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { TabNav }        from "@/components/ui/TabNav";
+import { EmptyState }    from "@/components/ui/EmptyState";
+import { NewsCard }      from "@/components/news/NewsCard";
+import { IPOTable }      from "@/components/news/IPOTable";
+import { EarningsTable } from "@/components/news/EarningsTable";
 
 interface NewsItem {
   id:       number;
@@ -11,7 +16,6 @@ interface NewsItem {
   summary:  string;
   image:    string;
 }
-
 interface IPOItem {
   date:   string;
   name:   string;
@@ -19,217 +23,200 @@ interface IPOItem {
   price:  string;
   status: string;
 }
-
 interface EarningsItem {
-  date:            string;
-  symbol:          string;
-  hour:            string;
-  epsEstimate?:    number;
+  date:             string;
+  symbol:           string;
+  hour:             string;
+  epsEstimate?:     number;
   revenueEstimate?: number;
 }
 
-const TABS = ["Market News", "IPO Calendar", "Earnings"] as const;
-type Tab = typeof TABS[number];
+const TABS = [
+  { label: "📰 Market News",  value: "news" },
+  { label: "🚀 IPO Calendar", value: "ipo"  },
+  { label: "📅 Earnings",     value: "earn" },
+];
 
-function newsAge(ts: number): string {
-  const diff = Date.now() - ts * 1000;
-  const m = Math.floor(diff / 60000);
-  if (m < 2) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+const CATEGORIES = [
+  { value: "general", label: "General",  fetchCat: "general",  filter: null as RegExp | null },
+  { value: "ai",      label: "AI",       fetchCat: "general",  filter: /\b(AI|artificial intelligence|machine learning|LLM|GPT|neural|OpenAI|Anthropic|deep learning|chatbot)\b/i as RegExp },
+  { value: "crypto",  label: "Crypto",   fetchCat: "crypto",   filter: null as RegExp | null },
+  { value: "space",   label: "Space",    fetchCat: "general",  filter: /\b(space|SpaceX|NASA|rocket|satellite|orbit|launch|asteroid|moon|Mars)\b/i as RegExp },
+];
+
+const REGIONS = [
+  { value: "all", label: "All",    flag: "",   filter: null as RegExp | null },
+  { value: "us",  label: "USA",    flag: "🇺🇸", filter: /\b(US|U\.S\.|American|Federal Reserve|Fed |Wall Street|S&P|Nasdaq|NYSE|Washington|Congress)\b/i as RegExp },
+  { value: "cn",  label: "China",  flag: "🇨🇳", filter: /\b(China|Chinese|Beijing|Shanghai|Shenzhen|CCP|PBOC|Alibaba|Tencent|Baidu|Hong Kong)\b/i as RegExp },
+  { value: "eu",  label: "Europe", flag: "🇪🇺", filter: /\b(Europe|European|ECB|EU |Eurozone|UK|Britain|Germany|France|Frankfurt|London|FTSE)\b/i as RegExp },
+];
+
+const TOPICS = [
+  { value: "all",   label: "All",          filter: null as RegExp | null },
+  { value: "trump", label: "Donald Trump", filter: /trump/i as RegExp },
+  { value: "musk",  label: "Elon Musk",    filter: /musk|tesla|spacex|x\.com|twitter/i as RegExp },
+];
+
+function proxy(path: string) {
+  return `/api/proxy/finnhub?path=${encodeURIComponent(path)}`;
 }
 
-function fmtDate(str: string): string {
-  const days = Math.ceil((new Date(str).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (days <= 7)  return `${days}d — soon`;
-  if (days <= 30) return `${days}d`;
-  return str;
+function Pill({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: active ? "var(--bg4)" : "var(--bg3)",
+        border: `1px solid ${active ? "var(--gold)" : "var(--border2)"}`,
+        color: active ? "var(--gold)" : "var(--text2)",
+        borderRadius: 20, padding: "4px 12px", fontSize: 11,
+        fontFamily: "'Space Mono',monospace", cursor: "pointer",
+        transition: "all 120ms", flexShrink: 0,
+      }}
+    >
+      {label}
+    </button>
+  );
 }
 
 export default function NewsPage() {
-  const [tab, setTab]     = useState<Tab>("Market News");
-  const [news, setNews]   = useState<NewsItem[]>([]);
-  const [ipos, setIpos]   = useState<IPOItem[]>([]);
-  const [earn, setEarn]   = useState<EarningsItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [tab,      setTab]      = useState("news");
+  const [news,     setNews]     = useState<NewsItem[]>([]);
+  const [ipos,     setIpos]     = useState<IPOItem[]>([]);
+  const [earn,     setEarn]     = useState<EarningsItem[]>([]);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+  const [category, setCategory] = useState("general");
+  const [region,   setRegion]   = useState("all");
+  const [topic,    setTopic]    = useState("all");
 
-  async function loadNews() {
+  const loadNews = useCallback(async (cat: string) => {
     setLoading(true); setError(null);
+    const fetchCat = CATEGORIES.find(c => c.value === cat)?.fetchCat ?? "general";
     try {
-      const res  = await fetch("/api/proxy/finnhub?path=/news?category=general%26minId=0");
+      const res  = await fetch(proxy(`/news?category=${fetchCat}&minId=0`));
       const data = await res.json();
-      setNews(Array.isArray(data) ? data.slice(0, 30) : []);
-    } catch { setError("Failed to load news"); }
-    finally { setLoading(false); }
-  }
+      if (!res.ok) { setError(data.error ?? `Finnhub error ${res.status}`); return; }
+      setNews(Array.isArray(data) ? data.slice(0, 80) : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load news");
+    } finally { setLoading(false); }
+  }, []);
 
-  async function loadIPO() {
+  const loadIPO = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const from = new Date().toISOString().split("T")[0];
       const to   = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const res  = await fetch(`/api/proxy/finnhub?path=/calendar/ipo?from=${from}%26to=${to}`);
+      const res  = await fetch(proxy(`/calendar/ipo?from=${from}&to=${to}`));
       const data = await res.json();
+      if (!res.ok) { setError(data.error ?? `Finnhub error ${res.status}`); return; }
       setIpos(data.ipoCalendar ?? []);
-    } catch { setError("Failed to load IPO calendar"); }
-    finally { setLoading(false); }
-  }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load IPO calendar");
+    } finally { setLoading(false); }
+  }, []);
 
-  async function loadEarnings() {
+  const loadEarnings = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const from = new Date().toISOString().split("T")[0];
       const to   = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const res  = await fetch(`/api/proxy/finnhub?path=/calendar/earnings?from=${from}%26to=${to}`);
+      const res  = await fetch(proxy(`/calendar/earnings?from=${from}&to=${to}`));
       const data = await res.json();
+      if (!res.ok) { setError(data.error ?? `Finnhub error ${res.status}`); return; }
       setEarn((data.earningsCalendar ?? []).slice(0, 60));
-    } catch { setError("Failed to load earnings"); }
-    finally { setLoading(false); }
-  }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load earnings");
+    } finally { setLoading(false); }
+  }, []);
 
   useEffect(() => {
-    if (tab === "Market News") loadNews();
-    else if (tab === "IPO Calendar") loadIPO();
+    if (tab === "news") loadNews(category);
+    else if (tab === "ipo") loadIPO();
     else loadEarnings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  // Re-fetch when category's fetchCat changes (e.g. general ↔ crypto)
+  const prevFetchCat = CATEGORIES.find(c => c.value === category)?.fetchCat;
+  useEffect(() => {
+    if (tab === "news") loadNews(category);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevFetchCat]);
+
+  const filteredNews = useMemo(() => {
+    let result = news;
+    const catDef = CATEGORIES.find(c => c.value === category);
+    if (catDef?.filter) result = result.filter(n => catDef.filter!.test(n.headline + " " + n.summary));
+    const regDef = REGIONS.find(r => r.value === region);
+    if (regDef?.filter) result = result.filter(n => regDef.filter!.test(n.headline + " " + n.source + " " + n.summary));
+    const topDef = TOPICS.find(t => t.value === topic);
+    if (topDef?.filter) result = result.filter(n => topDef.filter!.test(n.headline + " " + n.summary));
+    return result;
+  }, [news, category, region, topic]);
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ color: "var(--gold)", fontFamily: "'Space Mono', monospace", fontSize: 11, letterSpacing: 3, marginBottom: 12 }}>
           MARKET INTELLIGENCE
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {TABS.map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              background:   tab === t ? "var(--bg4)" : "transparent",
-              color:        tab === t ? "var(--gold)" : "var(--text2)",
-              border:       `1px solid ${tab === t ? "var(--border2)" : "transparent"}`,
-              borderRadius: "var(--radius)", padding: "6px 16px", fontSize: 13, cursor: "pointer",
-            }}>{t}</button>
-          ))}
-        </div>
+        <TabNav
+          tabs={TABS}
+          active={tab}
+          onChange={v => { setTab(v); setCategory("general"); setRegion("all"); setTopic("all"); }}
+        />
       </div>
 
-      {loading && <div style={{ textAlign: "center", padding: 60, color: "var(--text2)" }}>Loading…</div>}
-      {error   && <div style={{ color: "var(--red)", padding: 20 }}>⚠ {error}</div>}
-
-      {!loading && !error && tab === "Market News" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {news.map((n) => (
-            <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer" style={{
-              background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-              padding: "14px 18px", display: "flex", gap: 14, textDecoration: "none", color: "inherit",
-            }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border2)")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-            >
-              {n.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={n.image} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, lineHeight: 1.4 }}>{n.headline}</div>
-                <div style={{ color: "var(--text2)", fontSize: 12, marginBottom: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  {n.summary}
-                </div>
-                <div style={{ color: "var(--text3)", fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
-                  {n.source} · {newsAge(n.datetime)}
-                </div>
-              </div>
-            </a>
-          ))}
-          {news.length === 0 && <div style={{ color: "var(--text3)", textAlign: "center", padding: 40 }}>No news available.</div>}
+      {/* Filter pills — news tab only */}
+      {tab === "news" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {CATEGORIES.map(c => (
+              <Pill key={c.value} active={category === c.value} label={c.label} onClick={() => setCategory(c.value)} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {REGIONS.map(r => (
+              <Pill key={r.value} active={region === r.value} label={`${r.flag} ${r.label}`.trim()} onClick={() => setRegion(r.value)} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {TOPICS.map(t => (
+              <Pill key={t.value} active={topic === t.value} label={t.label} onClick={() => setTopic(t.value)} />
+            ))}
+          </div>
         </div>
       )}
 
-      {!loading && !error && tab === "IPO Calendar" && (
+      {loading && (
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text2)", fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
+          Loading…
+        </div>
+      )}
+
+      {error && (
         <div style={{
-          background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden",
+          background: "rgba(224,85,85,.08)", border: "1px solid rgba(224,85,85,.3)",
+          borderRadius: "var(--radius-sm)", padding: "13px 16px",
+          color: "#f09090", fontSize: 12, fontFamily: "'Space Mono', monospace",
+          lineHeight: 1.6, marginBottom: 16,
         }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--bg3)", borderBottom: "1px solid var(--border)" }}>
-                {["Date", "Company", "Symbol", "Price", "Status"].map((h) => (
-                  <th key={h} style={{
-                    padding: "10px 14px", textAlign: "left", color: "var(--text3)",
-                    fontFamily: "'Space Mono', monospace", fontSize: 10,
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ipos.map((ipo, i) => (
-                <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", fontSize: 13, color: "var(--gold)" }}>
-                    {fmtDate(ipo.date)}
-                  </td>
-                  <td style={{ padding: "9px 14px", fontSize: 13 }}>{ipo.name}</td>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", color: "var(--blue)", fontSize: 13 }}>
-                    {ipo.symbol}
-                  </td>
-                  <td style={{ padding: "9px 14px", fontSize: 13 }}>{ipo.price}</td>
-                  <td style={{ padding: "9px 14px" }}>
-                    <span style={{
-                      padding: "2px 9px", borderRadius: 5, fontSize: 11, fontFamily: "'Space Mono', monospace",
-                      background: "var(--bg4)", color: "var(--text2)", border: "1px solid var(--border2)",
-                    }}>{ipo.status}</span>
-                  </td>
-                </tr>
-              ))}
-              {ipos.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text3)" }}>No IPOs in the next 60 days.</td></tr>
-              )}
-            </tbody>
-          </table>
+          ⚠ {error}
         </div>
       )}
 
-      {!loading && !error && tab === "Earnings" && (
-        <div style={{
-          background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden",
-        }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--bg3)", borderBottom: "1px solid var(--border)" }}>
-                {["Date", "Ticker", "Time", "EPS Est.", "Rev. Est."].map((h) => (
-                  <th key={h} style={{
-                    padding: "10px 14px", textAlign: "left", color: "var(--text3)",
-                    fontFamily: "'Space Mono', monospace", fontSize: 10,
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {earn.map((e, i) => (
-                <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", fontSize: 13, color: "var(--gold)" }}>
-                    {e.date}
-                  </td>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", color: "var(--blue)", fontSize: 13 }}>
-                    {e.symbol}
-                  </td>
-                  <td style={{ padding: "9px 14px", color: "var(--text3)", fontSize: 12 }}>
-                    {e.hour === "bmo" ? "Before Open" : e.hour === "amc" ? "After Close" : e.hour}
-                  </td>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", fontSize: 13 }}>
-                    {e.epsEstimate != null ? `$${e.epsEstimate.toFixed(2)}` : "—"}
-                  </td>
-                  <td style={{ padding: "9px 14px", fontFamily: "'Space Mono', monospace", fontSize: 13 }}>
-                    {e.revenueEstimate != null ? `$${(e.revenueEstimate / 1e9).toFixed(2)}B` : "—"}
-                  </td>
-                </tr>
-              ))}
-              {earn.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text3)" }}>No earnings in the next 30 days.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {!loading && !error && tab === "news" && (
+        filteredNews.length > 0
+          ? <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {filteredNews.map((n) => <NewsCard key={n.id} item={n} />)}
+            </div>
+          : <EmptyState message="No news matches these filters." />
       )}
+
+      {!loading && !error && tab === "ipo"  && <IPOTable ipos={ipos} />}
+      {!loading && !error && tab === "earn" && <EarningsTable earnings={earn} />}
     </div>
   );
 }

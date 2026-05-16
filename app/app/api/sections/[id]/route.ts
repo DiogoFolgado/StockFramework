@@ -14,6 +14,19 @@ async function ownsSection(userId: string, sectionId: string) {
   return !!section;
 }
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const section = await prisma.section.findFirst({
+    where:   { id, userId: session.user.id },
+    include: { positions: { orderBy: { addedAt: "asc" } } },
+  });
+  if (!section) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ section });
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

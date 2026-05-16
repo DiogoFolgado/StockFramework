@@ -223,144 +223,340 @@ export const RISING_SECTORS: RisingSector[] = [
   {
     id: "ai", name: "Artificial Intelligence", icon: "🤖", color: "#9b72cf",
     candidates: [
+      // AI-native software & platforms
       "BBAI","SOUN","RXRX","PATH","AI","GTLB","DDOG","MNDY","VEEV","HIMS",
       "AMBA","IONQ","QUBT","RGTI","TMDX","RBRK","ZS","CRWD","OKTA","UIPATH",
       "ASAN","WDAY","PEGA","EXLS","EPAM","SMCI","NTAP","PSTG","DELL","HPE",
-      "CEVA","LPSN","ACMR","VERI","PRCT","SEMR","BRZE","APPN","PCTY","JAMF",
-      "DOCU","SDGR","ABCL","BEAM","EDIT","NTLA","MDB","ESTC","DOMO","SPSC",
-      "POWI","IRBT","HUBS","ZI","DOCN","TENB","FIVN","GKOS","IDCC","NTGR",
+      "CEVA","LPSN","VERI","PRCT","SEMR","BRZE","APPN","PCTY","JAMF","DOCU",
+      "SDGR","ABCL","BEAM","EDIT","NTLA","MDB","ESTC","DOMO","SPSC","HUBS",
+      "ZI","DOCN","TENB","FIVN","GKOS","IDCC","NTGR","ACMR","POWI","IRBT",
+      // SaaS & cloud infrastructure
+      "ADSK","ANSS","CDNS","INTU","ADBE","CRM","NOW","TOST","FRSH","PAYC",
+      "BILL","SHOP","NCNO","WK","FROG","ALTR","YEXT","BIGC","PRGS","WIX",
+      "BL","NTNX","TTD","CRTO","DV","IAS","MGNI","PUBM","ALRM","KVYO",
+      "OLO","CART","RDDT","ARM","ANET","PERI","AZPN","MELI","SE","GRAB",
+      // AI infrastructure & data
+      "PLTR","SNOW","NVDA","MSFT","GOOGL","META","AMZN","ORCL","IBM","TSM",
+      "ASML","AMAT","LRCX","KLAC","MU","AMD","QCOM","AVGO","TXN","INTC",
+      // Applied AI & vertical SaaS
+      "CWAN","TOST","FOUR","PCVX","PHR","ACCD","TDOC","DOCS","OMCL","NXGN",
+      "VEEV","EXAS","GDRX","HOLX","MMSI","QDEL","MEDP","ICLR","IQVIA","ICON",
+      "CRL","PRTA","REGN","RCUS","KYMR","DNLI","IMCR","ROIV","APLS","SAGE",
+      // Enterprise & productivity
+      "TWLO","BAND","FIVN","NICE","KNSA","VERA","PSTG","NTAP","NTNX","DDOG",
+      "ESTC","MDB","CFLT","NET","FSLY","INFN","VIAV","CIEN","CALX","S",
     ],
   },
   {
     id: "semis", name: "Semiconductors", icon: "💾", color: "#4d9de0",
     candidates: [
+      // Large-cap semis
       "NVDA","AMD","INTC","MU","TXN","AVGO","QCOM","AMAT","LRCX","KLAC",
+      "TSM","ASML","ARM","ANET","MCHP","ON","SWKS","QRVO","NXPI","MPWR",
+      // Mid & small-cap semis
       "WOLF","CRUS","ACLS","FORM","RMBS","SITM","DIOD","AEIS","ICHR","COHU",
-      "ONTO","POWI","LFUS","AOSL","CEVA","SGH","NXPI","SWKS","QRVO","MTSI",
-      "LITE","COHR","MPWR","ALGM","AMKR","VICR","PLXS","SLAB","IDCC","MACOM",
-      "ANSS","CDNS","SMCI","NTAP","PSTG","CALX","CIEN","MKSI","NOVT","UCTT",
-      "BRKS","AMBA","IPGP","VIAV","TTMI","MCHP","ON","SIMO","AEHR","ACMR",
+      "ONTO","LFUS","AOSL","SGH","LITE","COHR","ALGM","AMKR","VICR","PLXS",
+      "SLAB","MACOM","ANSS","CDNS","MKSI","NOVT","UCTT","BRKS","IPGP","VIAV",
+      "TTMI","SIMO","AEHR","ACMR","MXL","KLIC","TER","CGNX","MTSI","IDCC",
+      // Equipment & materials
+      "ENTG","AZTA","CCMP","CMC","AIXI","HIMX","PWRB","POWI","CEVA","AMBA",
+      "SMCI","PSTG","NTAP","DELL","HPE","SMTC","IMOS","ISSI","AGTC","NVTS",
+      // International ADRs
+      "STM","IFNNY","TOELY","SSNLF","ASX","SPNS","DSPG","NPKI","EMKR","RLAY",
+      // Packaging & testing
+      "ASX","AMKR","UTAC","MFLEX","ONTO","COHU","ICHR","ACLS","FORM","BRKS",
+      // Power semis
+      "ON","WOLF","AEIS","VICR","LFUS","MPWR","SLAB","DIOD","AOSL","CRUS",
+      // RF & wireless
+      "QRVO","SWKS","MTSI","MACOM","LITE","COHR","VIAV","IIVI","IPGP","II",
+      // Memory & storage
+      "MU","WDC","STX","NAND","VNET","PSTG","NTAP","IOTS","SLAB","SGH",
     ],
   },
   {
     id: "bigtech", name: "Big Tech", icon: "💻", color: "#45aaf2",
     candidates: [
+      // Growth internet & SaaS
       "RBLX","SNAP","PINS","TWLO","HUBS","ZI","DOCN","ESTC","MDB","TENB",
-      "APPN","PCTY","JAMF","GTLB","BRZE","CLPS","EXLS","EPAM","DDOG","FSLY",
-      "NET","CFLT","CALX","CIEN","INFN","VIAV","CRWD","ZS","OKTA","S","QLYS",
+      "APPN","PCTY","JAMF","GTLB","BRZE","EXLS","EPAM","DDOG","FSLY","NET",
+      "CFLT","CALX","CIEN","INFN","VIAV","CRWD","ZS","OKTA","S","QLYS",
       "VRNS","EVTC","PRFT","SHOP","PAYC","BILL","LSPD","SPSC","DOMO","VEEV",
-      "SEMR","TWLO","BAND","IRDM","GSAT","VSAT","NCNO","PEGA","WK","ASAN",
-      "WDAY","RBLX","SNAP","BMBL","MTCH","ANGI","CARG","TDC","OPEN","HOUS",
+      "SEMR","BAND","IRDM","GSAT","VSAT","NCNO","PEGA","WK","ASAN","WDAY",
+      "BMBL","MTCH","ANGI","CARG","TDC","OPEN","HOUS","RDDT","OLO","CART",
+      // Platforms & marketplaces
+      "ABNB","LYFT","DASH","UBER","GRUB","SPOT","ROKU","FUBO","SIRI","WMG",
+      "LGF","PARA","FOXA","DISCA","NWSA","IAC","ANGI","CARG","TDC","CARS",
+      // Enterprise software
+      "ADSK","ANSS","CDNS","AZPN","BL","ALTR","NTNX","YEXT","BIGC","PRGS",
+      "WIX","FROG","TOST","FRSH","KVYO","ALRM","CWAN","DV","IAS","MGNI",
+      "PUBM","CRTO","TTD","MELI","SE","GRAB","ARM","ANET","PERI","MELI",
+      // Cloud infrastructure
+      "DDOG","MDB","ESTC","CFLT","NET","FSLY","INFN","VIAV","CIEN","CALX",
+      "DOCN","ZI","HUBS","TWLO","BAND","FIVN","NICE","KNSA","VERA","PSTG",
     ],
   },
   {
     id: "health", name: "Healthcare & Biotech", icon: "💊", color: "#4cbb8a",
     candidates: [
+      // Gene editing & genomics
       "BEAM","EDIT","NTLA","CRBU","VERV","FATE","TWST","RXRX","ABCL","IOVA",
       "ACAD","NUVB","ARWR","RARE","IONS","KRYS","ALNY","PCVX","XNCR","IMVT",
       "VKTX","HALO","RYTM","AKRO","ALDX","HIMS","TMDX","SDGR","PRGO","NVCR",
       "AXNX","PRCT","GKOS","NTRA","ACCD","PHR","TDOC","DOCS","OMCL","NXGN",
       "VEEV","EXAS","GDRX","HOLX","MMSI","QDEL","MEDP","ICLR","IQVIA","ICON",
       "CRL","PRTA","REGN","RCUS","KYMR","DNLI","IMCR","ROIV","APLS","SAGE",
+      // Large pharma & biotech
+      "LLY","ABBV","MRK","PFE","AMGN","GILD","BIIB","MRNA","BNTX","REGN",
+      "BMY","AZN","NVO","RHHBY","SNY","GSK","TAK","PBR","VTRS","PRGO",
+      // Medical devices
+      "ISRG","BSX","MDT","ABT","SYK","ZBH","EW","DXCM","PODD","INSP",
+      "NTRA","AXNX","PRCT","GKOS","TMDX","MMSI","QDEL","HOLX","EXAS","IDXX",
+      // Health IT & services
+      "ACCD","PHR","TDOC","DOCS","OMCL","NXGN","VEEV","GDRX","AMWL","ONEM",
+      "HIMS","HALO","ACMR","SPNV","OPGN","RPRX","PHAT","TRUP","PETS","WELL",
+      // Specialty pharma
+      "ARWR","RARE","IONS","ALNY","KRYS","XNCR","IMVT","VKTX","RYTM","AKRO",
+      "NUVB","ABCL","IOVA","ACAD","ALDX","PRGO","NVCR","SAGE","APLS","ROIV",
+      // CROs & tools
+      "ICLR","ICON","CRL","MEDP","IQVIA","TMO","DHR","WAT","BIO","BRKR",
+      "NTRA","EXAS","HOLX","QDEL","MMSI","GDRX","VEEV","INSP","PODD","DXCM",
     ],
   },
   {
     id: "energy", name: "Energy & Oil", icon: "🛢️", color: "#e87d3e",
     candidates: [
+      // E&P (exploration & production)
       "CIVI","SM","MTDR","VTLE","NOG","CPE","REI","GPOR","CHRD","HPK",
-      "TALO","SBOW","ERF","MEG","CNQ","SU","DINO","PARR","MPLX","TRGP",
-      "AM","HESM","RRC","CNX","EQT","AR","CTRA","CRK","TELL","GLNG",
-      "NFE","CLNE","GEVO","GPRE","REX","VNOM","PHX","FLMN","ROCC","FANG",
-      "ACDC","NINE","KLXE","NR","DNOW","PTEN","HP","ATH","CVE","BTE",
-      "AMTX","NRGV","ARIS","MNRL","GRNT","EOG","DVN","HAL","OXY","SLB",
+      "TALO","SBOW","ERF","MEG","CNQ","SU","DINO","PARR","FANG","EOG",
+      "DVN","COP","PXD","OXY","MRO","APA","CHK","ESTE","BATL","MNRL",
+      "VNOM","PHX","FLMN","ROCC","ACDC","NINE","KLXE","NR","DNOW","PTEN",
+      "HP","CVE","BTE","GRNT","SWN","RRC","EQT","AR","CRK","CNX",
+      // Midstream & pipelines
+      "MPLX","TRGP","AM","HESM","WMB","KMI","EPD","MMP","PAA","PAGP",
+      "SHLX","DKL","CAPL","PBFX","NBLX","CIVI","NGL","KNOP","GMLP","GLOP",
+      // LNG & gas
+      "TELL","GLNG","NFE","CLNE","GEVO","GPRE","REX","AMTX","NRGV","ARIS",
+      // Refiners & marketing
+      "MPC","PSX","VLO","PBF","CLMT","PARR","DINO","ALJ","CALUMET","HF",
+      // Oilfield services
+      "SLB","HAL","BKR","FTI","CHX","DNOW","NR","KLXE","NINE","ACDC",
+      // Integrated majors
+      "XOM","CVX","BP","SHEL","TTE","ENB","SU","CNQ","CVE","IMO",
     ],
   },
   {
     id: "defense", name: "Defense & Aerospace", icon: "🛡️", color: "#e05555",
     candidates: [
-      "RKLB","ASTS","PL","SPIR","MNTS","BKSY","ASTR","RDW","SATX","IRDM",
-      "JOBY","ACHR","BLADE","SKYW","MESA","AVAV","KTOS","DRS","BBAI","TDG",
+      // Space & launch
+      "RKLB","ASTS","PL","SPIR","MNTS","BKSY","RDW","SATX","IRDM","GSAT",
+      // UAM & drones
+      "JOBY","ACHR","BLADE","AVAV","KTOS","DRS","BBAI","SKYW","MESA","AIR",
+      // Cybersecurity (defense-adjacent)
       "CRWD","ZS","S","OKTA","VRNS","QLYS","TENB","CYBR","LDOS","BAH",
-      "SAIC","CACI","MANT","TELOS","MAXR","GSAT","VSAT","LMT","RTX","NOC",
-      "GD","LHX","HII","AXON","HEICO","HWM","CAE","FLIR","COGNEX","CEVA",
-      "AMOT","DLB","MOBL","GNSS","TTMI","PLXS","WIRE","PRFT","EVTC","RDWR",
+      "SAIC","CACI","MANT","TELOS","MAXR","VSAT","LMT","RTX","NOC","GD",
+      // Prime contractors
+      "LHX","HII","AXON","HEICO","HWM","CAE","TDG","MOOG","FLIR","CGNX",
+      "CEVA","AMOT","DLB","MOBL","GNSS","TTMI","PLXS","WIRE","PRFT","EVTC",
+      // C4ISR & intelligence
+      "LDOS","BAH","SAIC","CACI","MANT","TELOS","RDWR","SPNS","AMBA","BBAI",
+      "DRS","KTOS","AXON","AVAV","HII","GD","NOC","LMT","RTX","LHX",
+      // Missile & space systems
+      "LMT","NOC","RTX","GD","LHX","HII","TDG","HEICO","HWM","MOOG",
+      // Electronics & sensors
+      "CGNX","FLIR","AMOT","DLB","MOBL","GNSS","TTMI","PLXS","WIRE","RDWR",
+      // Emerging defense tech
+      "RKLB","ASTS","BBAI","DRS","KTOS","AVAV","JOBY","ACHR","BLADE","AIR",
+      // Government IT
+      "LDOS","BAH","SAIC","CACI","MANT","TELOS","CSC","ATOS","PLXS","PRFT",
+      // Navy & maritime
+      "HII","GD","LMT","NOC","LHX","RTX","KTOS","DRS","HEICO","HWM",
     ],
   },
   {
     id: "finance", name: "Finance & Banking", icon: "🏦", color: "#d4a843",
     candidates: [
-      "SOFI","AFRM","UPST","LC","DAVE","NRDS","TREE","PRAA","WAL","BOKF",
-      "IBOC","CVBF","HTLF","CATY","FFIN","SBCF","TRMK","SFNC","HOOD","REPAY",
-      "FLYW","EVTC","PAYO","BILL","PAYC","FOUR","HGTY","ROOT","LMND","HIPPO",
-      "CNNE","ENV","FDS","VRTS","AMG","WDR","IVZ","WETF","COIN","MSTR",
-      "MARA","RIOT","CLSK","HUT","BITF","IREN","BTBT","CACC","WRLD","FCFS",
-      "EFC","GPMT","BXMT","STWD","LADR","MKTX","VIRT","IBKR","LPLA","EVR",
+      // Fintech & neobanks
+      "SOFI","AFRM","UPST","LC","DAVE","NRDS","TREE","PRAA","HOOD","REPAY",
+      "FLYW","EVTC","PAYO","BILL","PAYC","FOUR","ROOT","LMND","HIPPO","CNNE",
+      // Regional banks
+      "WAL","BOKF","IBOC","CVBF","HTLF","CATY","FFIN","SBCF","TRMK","SFNC",
+      "COLB","PACW","WAFD","FULT","WSBC","NBTB","NBT","EFSC","HAFC","BANR",
+      "UBSI","MBWM","TIXT","STBA","FBMS","CFFN","BRKL","AMNB","ESSA","HONE",
+      // Asset managers & brokers
+      "ENV","FDS","VRTS","AMG","WDR","IVZ","WETF","MKTX","VIRT","IBKR",
+      "LPLA","EVR","PJT","LAZ","MC","HLI","COWN","FBP","PIPR","GCMG",
+      // Payments & processing
+      "V","MA","AXP","PYPL","SQ","PAYX","FIS","FISV","GPN","WEX",
+      "NXPI","RPAY","PAYO","FLYW","EVTC","FOUR","BILL","PAYC","REPAY","NRDS",
+      // Insurance & insurtech
+      "ROOT","LMND","HIPPO","HGTY","METC","KBSF","HRTG","HIPO","KINS","SNCY",
+      // Credit & lending
+      "SOFI","AFRM","UPST","LC","DAVE","PRAA","WRLD","FCFS","CACC","EFC",
+      // Crypto-adjacent finance
+      "COIN","MSTR","HOOD","PYPL","SQ","NVEI","FLYW","REPAY","EVTC","FOUR",
+      // Specialty finance
+      "GPMT","BXMT","STWD","LADR","MKTX","VIRT","IBKR","LPLA","EVR","MC",
     ],
   },
   {
     id: "ev", name: "EV & Auto", icon: "⚡", color: "#26de81",
     candidates: [
-      "GOEV","AYRO","WKHS","NKLA","FSR","BLNK","EVGO","CHPT","VLTA","AMPX",
-      "MVST","BEEM","AMPE","SHPW","LAZR","INVZ","OUST","AEVA","MVIS","LIDR",
-      "QS","ENVX","SLDP","FREYR","CBAT","LEA","BWA","APTV","MODV","GNSS",
-      "NIU","HYLN","LCID","NIO","LI","XPEV","RIVN","FFIE","ADN","SL",
-      "ALB","SQM","LAC","PLL","LTHM","ALTM","MP","STLA","GM","F",
-      "DRIV","WAVE","OPTT","AMPE","EVTC","KORE","TSLA","BLNK","EVGO","CHPT",
+      // EV pure-plays
+      "TSLA","RIVN","LCID","NIO","LI","XPEV","FFIE","FSR","GOEV","WKHS",
+      "NKLA","AYRO","HYLN","NIU","ADN","SL","SOLO","KNDI","KANDI","ZEV",
+      // EV charging
+      "BLNK","EVGO","CHPT","VLTA","AMPX","BEEM","AMPE","SHPW","WAVE","OPTT",
+      // Lidar & sensors
+      "LAZR","INVZ","OUST","AEVA","MVIS","LIDR","VELO","AEYE","LEDS","PGRW",
+      // Battery tech
+      "QS","ENVX","SLDP","MVST","CBAT","FREYR","ILIKA","NXGN","BATT","LTBR",
+      // Battery materials
+      "ALB","SQM","LAC","PLL","LTHM","ALTM","MP","SQFL","PGMFF","NOVLF",
+      // Legacy auto & suppliers
+      "GM","F","TM","HMC","STLA","VWAGY","BMW","MBGYY","LEA","BWA",
+      "APTV","MODV","GNSS","DLPH","DAN","VC","SMP","THRM","ADNT","GNTX",
+      // Autonomous driving
+      "MBLY","TSLA","GOOGL","UBER","LYFT","LAZR","INVZ","OUST","AEVA","MVIS",
+      // Auto retail & services
+      "AN","KMX","LAD","SAH","GPI","ABG","PAG","CRVL","CVNA","VRM",
+      // Two/three-wheelers
+      "NIU","AYRO","ZEV","SOLO","KNDI","KANDI","GOEV","AYRO","SL","ADN",
     ],
   },
   {
     id: "cleanenergy", name: "Clean Energy", icon: "🌱", color: "#4cbb8a",
     candidates: [
-      "NOVA","SHLS","ARRY","SPWR","MAXN","CSIQ","DQ","JKS","STEM","FLUX",
-      "PLUG","BE","HASI","GPRE","GEVO","AMRC","CLNE","NRGV","OPTT","CWEN",
-      "MKFG","BWEN","AMSC","CEG","NRG","VST","SMR","BWX","OKLO","NNE",
-      "BWXT","UEC","CCJ","FSLR","ENPH","SEDG","RUN","NEE","AES","BEP",
-      "AY","TERP","CWCO","MSEX","YORW","ARTNA","SJW","GWRS","WTRG","AWK",
-      "ORA","WAVE","AMPE","SHPW","STEM","FLUX","AMPS","AMPX","ENVX","QS",
+      // Solar
+      "NOVA","SHLS","ARRY","SPWR","MAXN","CSIQ","DQ","JKS","FSLR","ENPH",
+      "SEDG","RUN","SUNW","STTK","FTCI","AMPS","PEGI","CWEN","REGI","GPRE",
+      // Wind & storage
+      "STEM","FLUX","PLUG","BE","HASI","AMRC","CLNE","NRGV","OPTT","MKFG",
+      "BWEN","AMSC","KNTK","AY","TERP","CWCO","MSEX","YORW","ARTNA","SJW",
+      // Nuclear
+      "CEG","SMR","BWX","OKLO","NNE","BWXT","UEC","CCJ","LEU","UUUU",
+      "NLR","URG","DNN","PALAF","URA","UROY","LTBR","NUKE","GEV","NANO",
+      // Utilities & grid
+      "NEE","AES","BEP","NRG","VST","WEC","XEL","EIX","PCG","D",
+      "ED","SO","DTE","CNP","AEP","PPL","NI","IDA","EVRG","POR",
+      // Hydrogen & fuel cell
+      "PLUG","BE","BLOOM","FCEL","HTOO","HYLN","DLOT","HYSR","HYZN","NKLA",
+      // Water & recycling
+      "AWK","WTRG","AWR","GWRS","SJW","YORW","MSEX","CWCO","ARTNA","PNTM",
+      // Carbon & ESG
+      "XPEL","CLNV","AMRC","HASI","CWEN","PEGI","AY","TERP","REGI","GPRE",
+      // Geothermal & other
+      "ORA","WAVE","AMPE","SHPW","FLUX","AMPS","ENVX","QS","SLDP","FREYR",
     ],
   },
   {
     id: "crypto", name: "Crypto & Digital Assets", icon: "₿", color: "#f7b731",
     candidates: [
-      "CIFR","WULF","IREN","BTBT","HUT","CLSK","MARA","RIOT","BITF","CORZ",
-      "SDIG","GRIID","HIVE","MGTI","BTCS","BENF","ARBK","GREE","COIN","HOOD",
-      "MSTR","PYPL","SQ","RBLX","MANA","SAND","AXS","ENJ","THETA","IMX",
-      "HIVE","MGTI","DMGI","BTCS","BENF","ARBK","CBIT","GREE","SDIG","GRIID",
-      "COIN","HOOD","MSTR","MARA","RIOT","CLSK","HUT","BITF","IREN","BTBT",
-      "CIFR","WULF","CORZ","SQ","PYPL","NVEI","FLYW","REPAY","EVTC","FOUR",
+      // Bitcoin miners
+      "MARA","RIOT","CLSK","HUT","BITF","IREN","BTBT","CIFR","WULF","CORZ",
+      "SDIG","HIVE","MGTI","BTCS","ARBK","GREE","GRIID","BENF","NBTC","DMGI",
+      // Ethereum & alt-coin adjacent
+      "COIN","HOOD","MSTR","SQ","PYPL","NVEI","FLYW","REPAY","EVTC","FOUR",
+      // Crypto infrastructure
+      "NCTY","FRMO","BTCS","EBON","BTCM","CBIT","NXTD","WRAP","RIOT","MARA",
+      // Digital asset firms
+      "COIN","HOOD","MSTR","GBTC","ETHE","BITO","BTF","BLOK","DAPP","BITS",
+      // Fintech with crypto exposure
+      "SQ","PYPL","SOFI","HOOD","AFRM","UPST","LC","DAVE","NRDS","TREE",
+      // Gaming & NFT
+      "RBLX","TTWO","EA","ZNGA","ATVI","GLUU","PENN","GENI","EVERI","AGS",
+      // Blockchain infrastructure
+      "IBM","ORCL","MSFT","AMZN","GOOGL","META","TSM","NVDA","AMD","INTC",
+      // Payment rails
+      "V","MA","AXP","FIS","FISV","GPN","WEX","PAYX","VIRT","MKTX",
+      // Web3 & metaverse
+      "META","RBLX","U","SNAP","PINS","MTCH","BMBL","IAC","ANGI","CARG",
+      // Exchanges & trading
+      "COIN","HOOD","IBKR","VIRT","MKTX","EVR","LAZ","MC","HLI","COWN",
     ],
   },
   {
     id: "space", name: "Space & Satellites", icon: "🚀", color: "#45aaf2",
     candidates: [
-      "RKLB","ASTR","MNTS","RDW","SPCE","ASTS","GSAT","VSAT","IRDM","PL",
-      "BKSY","SPIR","SATX","MAXR","VRSK","GHM","LMT","RTX","NOC","GD",
-      "LHX","HII","LDOS","BAH","KTOS","AXON","HEICO","TDG","AVAV","DRS",
-      "BBAI","MOOG","HWM","CAE","SAIC","MANT","TELOS","GNSS","TTMI","PLXS",
-      "WIRE","MOBL","FLIR","COGNEX","CEVA","AMOT","DLB","VECT","CRWD","ZS",
-      "ASTS","GSAT","VSAT","IRDM","PL","SPIR","SATX","RKLB","ASTR","MNTS",
+      // New space (launch & satellites)
+      "RKLB","ASTS","PL","SPIR","MNTS","BKSY","RDW","SATX","IRDM","GSAT",
+      "VSAT","MAXR","ASTR","SPCE","VORB","CPLP","LVOX","TSAT","TSAT","GHVI",
+      // Prime aerospace contractors
+      "LMT","RTX","NOC","GD","LHX","HII","BA","AXON","HEICO","TDG",
+      "HWM","MOOG","CAE","FLIR","CGNX","DRS","KTOS","AVAV","DRS","BBAI",
+      // Satellite communications
+      "IRDM","GSAT","VSAT","ASTS","SPIR","PL","BKSY","SATX","MAXR","ORBK",
+      // Defense electronics
+      "CEVA","AMOT","DLB","MOBL","GNSS","TTMI","PLXS","WIRE","RDWR","SPNS",
+      // Earth observation
+      "PL","BKSY","SPIR","SATX","MAXR","ORBK","VSAT","IRDM","GSAT","ASTS",
+      // Space exploration tech
+      "RKLB","ASTR","MNTS","SPCE","VORB","CPLP","LMT","NOC","RTX","BA",
+      // Avionics & propulsion
+      "HWM","HEICO","TDG","CAE","MOOG","FLIR","CGNX","AMOT","DLB","MOBL",
+      // Government IT & analytics
+      "LDOS","BAH","SAIC","CACI","MANT","TELOS","MAXR","VRSK","GHM","SPNS",
+      // UAM
+      "JOBY","ACHR","BLADE","SKYW","MESA","AIR","EVTC","PRFT","RDWR","PLXS",
+      // Telecom infrastructure
+      "IRDM","GSAT","VSAT","AMT","CCI","SBAC","UNIT","SHEN","LUMN","FYBR",
     ],
   },
   {
     id: "consumer", name: "Consumer & Retail", icon: "🛒", color: "#fd9644",
     candidates: [
+      // Beauty, wellness & DTC
       "PRPL","BARK","XPOF","ELF","OLPX","SKIN","HIMS","FIGS","ONON","BIRK",
+      // Food & beverage
       "CAVA","BROS","WING","DNUT","TXRH","JACK","CAKE","PLAY","EAT","FAT",
+      "SHAK","HABT","PZZA","NDLS","RRGB","DIN","FAT","EAT","CAKE","DRI",
+      // Discount & specialty retail
       "FIVE","OLLI","BIG","CONN","PRTY","TLYS","BOOT","HIBB","DKNG","PENN",
-      "ELF","OLPX","SKIN","HIMS","KVYO","PDCO","ULTA","SBH","CURV","PRPL",
-      "LOVE","LESL","SHAK","HABT","MGM","GENI","EVERI","CNTY","AGS","RBLX",
-      "TTWO","EA","ZNGA","GLUU","PENN","GENI","EVERI","AGS","ACMR","BARK",
+      "GENI","EVERI","CNTY","AGS","RBLX","TTWO","EA","ZNGA","GLUU","ATVI",
+      // Fashion & apparel
+      "NKE","LULU","ONON","BIRK","CROX","SKX","DECK","BOOT","HIBB","TLYS",
+      "GES","PVH","HBI","KSS","JWN","M","PRTY","LOVE","LESL","CURV",
+      // Home & garden
+      "HD","LOW","TREX","FBHS","DOOR","MHO","BLDR","GMS","IBP","SITE",
+      // Travel & leisure
+      "ABNB","LYFT","DASH","UBER","MAR","HLT","H","IHG","RCL","CCL",
+      "NCLH","EXPE","BKNG","TRIP","VACN","TNL","SVC","AHOTL","VIEE","PK",
+      // Health & personal care
+      "HIMS","FIGS","XPOF","ELF","OLPX","SKIN","PRTY","LOVE","LESL","CURV",
+      // E-commerce
+      "SHOP","ETSY","CHWY","FTCH","REAL","OSTK","OVERSTOCK","WISH","IPOE","VRM",
+      // Auto & parts
+      "AN","KMX","LAD","SAH","GPI","ABG","PAG","AAP","GPC","ORLY",
+      // Entertainment
+      "NFLX","DIS","PARA","WMG","LGF","FOXA","SIRI","SPOT","ROKU","FUBO",
     ],
   },
   {
     id: "realestate", name: "Real Estate & REITs", icon: "🏠", color: "#a55eea",
     candidates: [
+      // PropTech
       "OPEN","RDFN","EXPI","HOUS","DBRG","SAFE","IIPR","GMRE","GOOD","LAND",
       "PINE","SACH","RC","TWO","MFA","RITM","EARN","RWT","TPVG","STAG",
-      "EGP","FR","REXR","COLD","CUBE","EXR","LSI","NSA","EQR","AVB",
-      "INVH","AMH","NLY","ROIC","KITE","CBL","MAC","SKT","RPT","UE",
-      "BRX","KIM","PMT","MITT","EQIX","DLR","AMT","CCI","SBAC","UNIT",
-      "CORR","CLNC","GPMT","BXMT","O","NNN","EPRT","NTST","ADC","GTY",
+      // Industrial & logistics
+      "EGP","FR","REXR","COLD","PLD","STAG","EGP","FR","REXR","COLD",
+      // Self-storage
+      "CUBE","EXR","LSI","NSA","PSA","SELF","NSAT","SST","STORAGE","STOR",
+      // Residential
+      "EQR","AVB","INVH","AMH","NLY","ROIC","KITE","UE","BRX","KIM",
+      "CPT","UDR","MAA","ESS","NHI","LTC","CSR","IRET","ELME","VRE",
+      // Mortgage REITs
+      "NLY","AGNC","PMT","MITT","EFC","GPMT","BXMT","STWD","LADR","TWO",
+      "MFA","RITM","EARN","RWT","RC","SACH","BRMK","FBRT","BRSP","TRTX",
+      // Office & diversified
+      "BXP","VNO","SLG","CUZ","PDM","DEA","OFC","VER","CLPR","ESRT",
+      "HIW","PKI","CTRE","CHCT","MPW","PEB","RLJ","SHO","APLE","AHT",
+      // Data centers
+      "EQIX","DLR","AMT","CCI","SBAC","UNIT","CORR","CLNC","SWCH","CONE",
+      // Healthcare REITs
+      "WELL","VTR","HR","DOC","LTC","NHI","OHI","SNH","SBRA","CTRE",
+      // Net lease
+      "O","NNN","EPRT","NTST","ADC","GTY","STOR","ARCP","SPIRIT","PREIT",
+      // Hotel REITs
+      "MAR","HLT","H","PK","RLJ","SHO","APLE","AHT","CLDT","NXRT",
     ],
   },
 ];
