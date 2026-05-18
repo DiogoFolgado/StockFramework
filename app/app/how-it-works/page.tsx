@@ -3,22 +3,22 @@ export default function HowItWorksPage() {
     {
       icon: "◈", name: "Fundamental", weight: "30%", color: "#d4a843",
       desc: "Is the business healthy and growing? Looks at financials — P/E, revenue growth, gross margins, ROE — the same metrics a long-term investor studies before buying.",
-      signals: ["P/E ratio vs sector average", "Revenue growth YoY", "Gross margin & ROE", "Debt/Equity, Current Ratio", "Free Cash Flow per Share"],
+      signals: ["P/E ratio — sector-adjusted bands", "PEG ratio (P/E ÷ EPS growth)", "Forward P/E vs trailing discount", "Revenue growth YoY", "Gross margin & ROE", "Debt/Equity, Current Ratio, FCF/share", "Dividend yield (sector-contextual)", "Absolute EPS profitability check"],
     },
     {
       icon: "◎", name: "Technical", weight: "35% — highest", color: "#4d9de0",
-      desc: "What is the price doing right now? Reads price behaviour — 52-week range position, moving averages, daily momentum. Strongest short-to-medium-term predictor per research.",
-      signals: ["52W range position", "Golden/Death Cross (SMA50/200)", "RSI (14-period)", "Daily momentum vs prev close", "Volume vs 3-month ADTV"],
+      desc: "What is the price doing right now? Reads price behaviour — 52-week range position, moving averages, MACD, Bollinger Bands, and sustained volume. Strongest short-to-medium-term predictor per research.",
+      signals: ["52W range position & proximity to highs", "SMA50/200 cross with separation score", "MACD(12,26,9) trend confirmation", "Bollinger Bands — %B position and squeeze", "RSI momentum (50–75 range focus)", "Sustained 5-day volume vs 3M ADTV"],
     },
     {
       icon: "◉", name: "Entropy", weight: "10%", color: "#9b72cf",
-      desc: "How unpredictable and risky is this stock? Measures disorder and volatility. Starts high and subtracts for risk signals.",
-      signals: ["Beta (market sensitivity)", "52W range width", "Sector complexity", "Intraday price range", "Realised annualised volatility"],
+      desc: "How unpredictable and risky is this stock? Measures disorder and volatility. Starts high and subtracts for risk signals. Detects when realised volatility diverges from beta.",
+      signals: ["Beta (market sensitivity)", "52W range width", "Sector complexity", "Intraday price range", "Realised annualised volatility (50-day min)", "Beta vs realised vol divergence"],
     },
     {
       icon: "◐", name: "Semantic", weight: "25%", color: "#4cbb8a",
-      desc: "What does Wall Street think? Captures analyst recommendations, price targets, sector narratives.",
-      signals: ["Analyst buy/hold/sell counts", "Price target vs current price", "Analyst conviction (spread)", "Sector tailwinds/headwinds", "IPO age"],
+      desc: "What does Wall Street think? Captures analyst recommendations, consensus drift over 1–3 months, price targets, and sector narratives. Detects post-IPO lockup expiry windows.",
+      signals: ["Analyst buy/hold/sell consensus", "1-month and 3-month consensus drift", "Price target vs current price", "Analyst conviction (low/high spread)", "Sector tailwinds/headwinds", "IPO age with lockup-expiry window"],
     },
   ];
 

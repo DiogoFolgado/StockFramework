@@ -2,23 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { MarketClock } from "./MarketClock";
 
 const NAV_ITEMS = [
   { href: "/",             label: "Home",        icon: "⌂" },
-  { href: "/sectors",      label: "Sectors",     icon: "⬡" },
-  { href: "/scores",       label: "Scores",      icon: "◎" },
-  { href: "/sections",     label: "My Sections", icon: "▤" },
+  { href: "/markets",      label: "Markets",     icon: "⬡" },
+  { href: "/portfolio",    label: "Portfolio",   icon: "▤" },
+  { href: "/compare",      label: "Compare",     icon: "⇌" },
   { href: "/how-it-works", label: "How It Works",icon: "?" },
-  { href: "/history",      label: "History",     icon: "⏱" },
   { href: "/news",         label: "News",        icon: "◈" },
+  { href: "/podcast",      label: "Podcast",     icon: "◉" },
 ];
 
 const AUTH_ROUTES = ["/login", "/register"];
 
 export function NavBar() {
   const path = usePathname();
+  const [hasPodcastNew, setHasPodcastNew] = useState(false);
+
+  useEffect(() => {
+    setHasPodcastNew(localStorage.getItem("podcast_has_new") === "true");
+  }, [path]);
 
   if (AUTH_ROUTES.includes(path)) return null;
 
@@ -56,7 +62,21 @@ export function NavBar() {
                   transition:   "all .15s",
                 }}
               >
-                <span>{icon}</span>{label}
+                <span style={{ position: "relative" }}>
+                  {icon}
+                  {href === "/podcast" && hasPodcastNew && (
+                    <span style={{
+                      position: "absolute",
+                      top: -3,
+                      right: -6,
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "var(--gold)",
+                    }} />
+                  )}
+                </span>
+                {label}
               </Link>
             );
           })}

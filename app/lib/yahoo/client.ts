@@ -2,18 +2,19 @@ import type { Quote, Profile, Metrics, RecommendationTrend, Candles, AnalysisInp
 
 const PROXY = process.env.YAHOO_WORKER_URL ?? "https://noisy-bread-1e4c.diogo-lafp.workers.dev";
 
-async function yf<T>(url: string): Promise<T> {
+async function yf<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, {
     headers: { "User-Agent": "StockFramework/2.0" },
     next: { revalidate: 0 },
+    signal,
   });
   if (!res.ok) throw new Error(`Yahoo proxy error (HTTP ${res.status})`);
   return res.json() as Promise<T>;
 }
 
-export async function fetchQuote(ticker: string): Promise<Quote> {
+export async function fetchQuote(ticker: string, signal?: AbortSignal): Promise<Quote> {
   const d = await yf<{ chart?: { result?: Array<{ meta?: Record<string, unknown>; indicators?: { quote?: Array<Record<string, unknown[]>> } }> } }>(
-    `${PROXY}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`
+    `${PROXY}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`, signal
   );
   const r = d?.chart?.result?.[0];
   if (!r) throw new Error("No quote data");
@@ -27,9 +28,9 @@ export async function fetchQuote(ticker: string): Promise<Quote> {
   };
 }
 
-export async function fetchProfile(ticker: string): Promise<Profile> {
+export async function fetchProfile(ticker: string, signal?: AbortSignal): Promise<Profile> {
   const d = await yf<{ quoteSummary?: { result?: Array<{ assetProfile?: Record<string, unknown>; price?: Record<string, unknown> }> } }>(
-    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=assetProfile%2Cprice`
+    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=assetProfile%2Cprice`, signal
   );
   const r = d?.quoteSummary?.result?.[0];
   if (!r) return {};
@@ -47,9 +48,9 @@ export async function fetchProfile(ticker: string): Promise<Profile> {
   };
 }
 
-export async function fetchMetrics(ticker: string): Promise<Metrics> {
+export async function fetchMetrics(ticker: string, signal?: AbortSignal): Promise<Metrics> {
   const d = await yf<{ quoteSummary?: { result?: Array<Record<string, Record<string, unknown>>> } }>(
-    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail`
+    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail`, signal
   );
   const r = d?.quoteSummary?.result?.[0];
   if (!r) return {};
@@ -94,9 +95,9 @@ export async function fetchMetrics(ticker: string): Promise<Metrics> {
   };
 }
 
-export async function fetchRecommendations(ticker: string): Promise<RecommendationTrend[]> {
+export async function fetchRecommendations(ticker: string, signal?: AbortSignal): Promise<RecommendationTrend[]> {
   const d = await yf<{ quoteSummary?: { result?: Array<{ recommendationTrend?: { trend?: RecommendationTrend[] } }> } }>(
-    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=recommendationTrend`
+    `${PROXY}/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=recommendationTrend`, signal
   );
   return d?.quoteSummary?.result?.[0]?.recommendationTrend?.trend ?? [];
 }
@@ -132,24 +133,40 @@ export async function fetchAll(ticker: string): Promise<AnalysisInput> {
   const candles = candle.status === "fulfilled" ? candle.value : null;
 
   if (!q.c) throw new Error("No data returned — check ticker symbol");
+
+  // Guard: if no critical metric fields were returned the metrics endpoint failed.
+  // Running the engine on empty data would produce a misleading score.
+  const hasMetrics = m["52WeekHigh"] != null || m.peBasicExclExtraTTM != null
+    || m.peTTM != null || m.beta != null || m.revenueGrowthTTMYoy != null
+    || m["3MonthADTV"] != null;
+  if (!hasMetrics) throw new Error("Market data unavailable — the data provider returned incomplete results. Try again in a moment.");
+
   return { q, p, m, rc, candles };
 }
 
-export async function fetchAllLite(ticker: string): Promise<AnalysisInput> {
-  const [quote, profile, metrics, reco] = await Promise.allSettled([
-    fetchQuote(ticker),
-    fetchProfile(ticker),
-    fetchMetrics(ticker),
-    fetchRecommendations(ticker),
+export async function fetchAllLite(ticker: string, signal?: AbortSignal): Promise<AnalysisInput> {
+  const [quote, profile, metrics, reco, candle] = await Promise.allSettled([
+    fetchQuote(ticker, signal),
+    fetchProfile(ticker, signal),
+    fetchMetrics(ticker, signal),
+    fetchRecommendations(ticker, signal),
+    fetchCandles(ticker, "1d", "1y"),
   ]);
 
   const q  = quote.status   === "fulfilled" ? quote.value   : ({} as Quote);
   const p  = profile.status === "fulfilled" ? profile.value : ({} as Profile);
   const m  = metrics.status === "fulfilled" ? metrics.value : ({} as Metrics);
   const rc = reco.status    === "fulfilled" ? reco.value    : [];
+  const candles = candle.status === "fulfilled" ? candle.value : null;
 
   if (!q.c) throw new Error("No data returned — check ticker symbol");
-  return { q, p, m, rc, candles: null };
+
+  const hasMetrics = m["52WeekHigh"] != null || m.peBasicExclExtraTTM != null
+    || m.peTTM != null || m.beta != null || m.revenueGrowthTTMYoy != null
+    || m["3MonthADTV"] != null;
+  if (!hasMetrics) throw new Error("Market data unavailable — the data provider returned incomplete results. Try again in a moment.");
+
+  return { q, p, m, rc, candles };
 }
 
 export async function searchTickers(query: string): Promise<Array<{ ticker: string; name: string; exchange: string; type: string }>> {
@@ -158,7 +175,7 @@ export async function searchTickers(query: string): Promise<Array<{ ticker: stri
   );
   const quotes = d?.quotes ?? [];
   return quotes
-    .filter((q) => q.symbol && (q.quoteType === "EQUITY" || q.quoteType === "CRYPTOCURRENCY"))
+    .filter((q) => q.symbol && (q.quoteType === "EQUITY" || q.quoteType === "CRYPTOCURRENCY" || q.quoteType === "ETF"))
     .map((q) => ({
       ticker:   q.symbol!,
       name:     q.longname ?? q.shortname ?? q.symbol!,

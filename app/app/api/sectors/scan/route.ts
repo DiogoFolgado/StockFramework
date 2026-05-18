@@ -7,6 +7,11 @@ import { runStockScoring } from "@/lib/scoring/engine";
 
 export const maxDuration = 300;
 
+const BATCH     = 5;
+const DELAY     = 250; // ms between batches
+const MAX_SCORED = 200; // stop after scoring this many unique stocks
+const TIMEOUT   = 10_000; // per-stock fetch timeout in ms
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -20,17 +25,16 @@ export async function GET(req: NextRequest) {
   if (!sector) return new Response("Unknown sector", { status: 404 });
 
   const encoder = new TextEncoder();
-  const candidates = sector.candidates.slice(0, 200);
   const userId = session.user.id;
 
-  // Tickers already saved to history today — skip re-inserting them
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const savedToday = await prisma.analysisHistory.findMany({
-    where: { userId, analyzedAt: { gte: todayStart } },
-    select: { ticker: true },
+  // Deduplicate within this sector's candidates list only
+  const seen = new Set<string>();
+  const toProcess = sector.candidates.filter((t) => {
+    if (seen.has(t)) return false;
+    seen.add(t);
+    return true;
   });
-  const savedTickers = new Set(savedToday.map((r) => r.ticker));
+  const reportedTotal = Math.min(toProcess.length, MAX_SCORED);
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -38,32 +42,37 @@ export async function GET(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
-      send({ type: "start", total: candidates.length });
+      send({ type: "start", total: reportedTotal });
 
-      const BATCH = 3;
-      const DELAY = 600;
+      let uniqueScored = 0;
+      let checked = 0;
 
-      for (let i = 0; i < candidates.length; i += BATCH) {
-        const batch = candidates.slice(i, i + BATCH);
+      outer: for (let i = 0; i < toProcess.length; i += BATCH) {
+        const batch = toProcess.slice(i, i + BATCH);
 
         const batchResults = await Promise.allSettled(
           batch.map(async (ticker) => {
-            const data = await fetchAllLite(ticker);
-            const result = runStockScoring(data);
-            return { ticker, data, result };
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), TIMEOUT);
+            try {
+              const data = await fetchAllLite(ticker, ac.signal);
+              const result = runStockScoring(data);
+              return { ticker, data, result };
+            } finally {
+              clearTimeout(timer);
+            }
           })
         );
 
         for (let j = 0; j < batch.length; j++) {
           const r = batchResults[j];
-          const idx = i + j + 1;
+          checked++;
+
           if (r.status === "fulfilled") {
             const { ticker, data, result } = r.value;
+            uniqueScored++;
 
-            // Persist to history (skip if already saved today)
-            if (!savedTickers.has(ticker)) {
-              savedTickers.add(ticker);
-              prisma.analysisHistory.create({
+            prisma.analysisHistory.create({
                 data: {
                   userId,
                   ticker,
@@ -73,41 +82,42 @@ export async function GET(req: NextRequest) {
                   sector:      data.p?.finnhubIndustry ?? data.p?.industry ?? sector.name,
                   pillars:     result.scores as object,
                 },
-              }).catch(() => { /* non-blocking — ignore individual save failures */ });
-            }
+              }).catch(() => { /* non-blocking */ });
 
             send({
               type: "tick",
-              checked: idx,
-              total: candidates.length,
+              checked,
+              total: reportedTotal,
               ticker,
-              comp: result.comp,
+              comp:   result.comp,
               signal: result.sig,
-              name: data.p?.name ?? ticker,
-              price: data.q?.c ?? 0,
+              name:   data.p?.name ?? ticker,
+              price:  data.q?.c ?? 0,
               chgPct: data.q?.c && data.q?.pc ? ((data.q.c - data.q.pc) / data.q.pc) * 100 : null,
               pillars: {
                 fundamental: result.scores.fundamental.score,
-                technical: result.scores.technical.score,
-                entropy: result.scores.entropy.score,
-                semantic: result.scores.semantic.score,
+                technical:   result.scores.technical.score,
+                entropy:     result.scores.entropy.score,
+                semantic:    result.scores.semantic.score,
               },
               verdicts: {
                 technical: result.scores.technical.verdict,
-                semantic: result.scores.semantic.verdict,
+                semantic:  result.scores.semantic.verdict,
               },
               metrics: {
-                pe: data.m?.peBasicExclExtraTTM ?? null,
-                beta: data.m?.beta ?? null,
+                pe:       data.m?.peBasicExclExtraTTM ?? null,
+                beta:     data.m?.beta ?? null,
                 industry: data.p?.finnhubIndustry ?? data.p?.industry ?? null,
               },
             });
+
+            if (uniqueScored >= MAX_SCORED) break outer;
           } else {
-            send({ type: "tick", checked: idx, total: candidates.length, ticker: batch[j], skipped: true });
+            send({ type: "tick", checked, total: reportedTotal, ticker: batch[j], skipped: true });
           }
         }
 
-        if (i + BATCH < candidates.length) {
+        if (i + BATCH < toProcess.length && uniqueScored < MAX_SCORED) {
           await new Promise((r) => setTimeout(r, DELAY));
         }
       }

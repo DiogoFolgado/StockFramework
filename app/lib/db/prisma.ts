@@ -8,6 +8,9 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// In development, skip the global singleton so schema changes are always picked up
+// after `prisma generate` without requiring a full server restart.
+export const prisma =
+  process.env.NODE_ENV === "production"
+    ? (globalForPrisma.prisma ?? (globalForPrisma.prisma = createPrismaClient()))
+    : createPrismaClient();

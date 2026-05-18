@@ -8,13 +8,41 @@ datasource db {
 }
 
 model User {
-  id        String            @id @default(cuid())
-  email     String            @unique
-  password  String
-  sections  Section[]
-  history   AnalysisHistory[]
-  snapshots SectionSnapshot[]
-  createdAt DateTime          @default(now())
+  id                  String                    @id @default(cuid())
+  email               String                    @unique
+  password            String
+  sections            Section[]
+  history             AnalysisHistory[]
+  snapshots           SectionSnapshot[]
+  notificationState   PodcastNotificationState?
+  sentimentSnapshots  SentimentSnapshot[]
+  entropySnapshots    EntropySnapshot[]
+  createdAt           DateTime                  @default(now())
+}
+
+model PodcastEpisode {
+  id           String   @id @default(cuid())
+  trackId      BigInt   @unique
+  trackName    String
+  description  String
+  releaseDate  DateTime
+  durationMs   Int
+  episodeUrl   String
+  trackViewUrl String
+  artworkUrl   String
+  aiSummary    String?
+  fetchedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([releaseDate(sort: Desc)])
+}
+
+model PodcastNotificationState {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSeenTrackId BigInt?
+  updatedAt       DateTime @updatedAt
 }
 
 model Section {
@@ -73,4 +101,50 @@ model AnalysisHistory {
 
   @@index([userId, analyzedAt(sort: Desc)])
   @@index([ticker])
+}
+
+model SentimentSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  ticker    String
+  score     Float
+  summary   String
+  newsCount Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, ticker, createdAt(sort: Desc)])
+}
+
+model EntropySnapshot {
+  id         String   @id @default(cuid())
+  userId     String
+  date       String   // "YYYY-MM-DD"
+  avgEntropy Float
+  regime     String   // "HIGH" | "ELEVATED" | "NORMAL"
+  hotspots   String[]
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date(sort: Desc)])
+}
+
+model SharedAnalysis {
+  id          String   @id @default(cuid())
+  ticker      String
+  companyName String
+  sector      String
+  composite   Float
+  signal      String
+  scores      Json
+  quote       Json
+  metrics     Json
+  isCrypto    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([createdAt(sort: Desc)])
 }

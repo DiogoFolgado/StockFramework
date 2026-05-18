@@ -152,10 +152,20 @@ function SectorDailyCard({ sector }: { sector: typeof SECTORS[0] }) {
 }
 
 // ── Sector Rising Card ────────────────────────────────────────────────────────
-function SectorRisingCard({ sector }: { sector: typeof RISING_SECTORS[0] }) {
+function SectorRisingCard({
+  sector,
+  triggerAt,
+  onScanDone,
+}: {
+  sector: typeof RISING_SECTORS[0];
+  triggerAt?: number;
+  onScanDone?: () => void;
+}) {
   const [scan, setScan]           = useState<ScanState | null>(null);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef      = useRef<AbortController | null>(null);
+  const onScanDoneRef = useRef(onScanDone);
+  useEffect(() => { onScanDoneRef.current = onScanDone; }, [onScanDone]);
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -180,7 +190,11 @@ function SectorRisingCard({ sector }: { sector: typeof RISING_SECTORS[0] }) {
 
     try {
       const res = await fetch(`/api/sectors/scan?sectorId=${sector.id}`, { signal: ac.signal });
-      if (!res.ok || !res.body) { setScan((s) => s ? { ...s, running: false, done: true } : s); return; }
+      if (!res.ok || !res.body) {
+        setScan((s) => s ? { ...s, running: false, done: true } : s);
+        onScanDoneRef.current?.();
+        return;
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -220,6 +234,7 @@ function SectorRisingCard({ sector }: { sector: typeof RISING_SECTORS[0] }) {
               setLastScanned(now);
               saveCache(sector.id, { scannedAt: now, above7: collectedAbove7, checked: finalChecked, total: finalTotal });
               setScan((s) => s ? { ...s, running: false, done: true } : s);
+              onScanDoneRef.current?.();
             }
           } catch { /* malformed SSE line */ }
         }
@@ -227,9 +242,17 @@ function SectorRisingCard({ sector }: { sector: typeof RISING_SECTORS[0] }) {
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") {
         setScan((s) => s ? { ...s, running: false, done: true } : s);
+        onScanDoneRef.current?.();
       }
     }
   }, [sector.id, sector.candidates.length]);
+
+  // External trigger (Scan All)
+  useEffect(() => {
+    if (!triggerAt) return;
+    startScan();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerAt]);
 
   const stopScan = useCallback(() => {
     abortRef.current?.abort();
@@ -311,9 +334,9 @@ function SectorRisingCard({ sector }: { sector: typeof RISING_SECTORS[0] }) {
         <div style={{ borderTop: "1px solid var(--border)" }}>
           <div style={{ padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: "var(--text3)", borderBottom: "1px solid var(--border3)" }}>
             <span>{scan.above7.length} results ≥ 7.0</span>
-            <span>top {Math.min(scan.above7.length, 10)} shown</span>
+            <span>{scan.above7.length >= 200 ? "full scan" : `all shown`}</span>
           </div>
-          {scan.above7.slice(0, 10).map((r) => (
+          {scan.above7.map((r) => (
             <ScanResultItem key={r.ticker} result={r} sectorColor={sector.color} />
           ))}
         </div>
@@ -336,6 +359,40 @@ const TABS = [
 
 export default function SectorsPage() {
   const [tab, setTab] = useState<Tab>("daily");
+
+  // Scan All state
+  const [scanAllActive, setScanAllActive] = useState(false);
+  const [scanAllIdx, setScanAllIdx]       = useState(-1);
+  const [scanAllTriggers, setScanAllTriggers] = useState<number[]>(() => RISING_SECTORS.map(() => 0));
+
+  const startScanAll = useCallback(() => {
+    setScanAllActive(true);
+    setScanAllIdx(0);
+    setScanAllTriggers((prev) => prev.map((_, i) => (i === 0 ? Date.now() : 0)));
+  }, []);
+
+  const advanceScanAll = useCallback((completedIdx: number) => {
+    setScanAllActive((active) => {
+      if (!active) return false;
+      const next = completedIdx + 1;
+      if (next >= RISING_SECTORS.length) {
+        setScanAllIdx(-1);
+        return false;
+      }
+      setScanAllIdx(next);
+      setScanAllTriggers((prev) => {
+        const t = [...prev];
+        t[next] = Date.now();
+        return t;
+      });
+      return true;
+    });
+  }, []);
+
+  const stopScanAll = useCallback(() => {
+    setScanAllActive(false);
+    setScanAllIdx(-1);
+  }, []);
 
   return (
     <div>
@@ -372,10 +429,50 @@ export default function SectorsPage() {
 
       {tab === "rising" && (
         <div>
-          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>
-            Scan candidates through the four-pillar engine. Results show stocks scoring ≥ 7.0 — cached for 7 days, re-scan anytime.
+          {/* Header row with description + Scan All button */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 12, color: "var(--text3)" }}>
+              Scan candidates through the four-pillar engine. Results show stocks scoring ≥ 7.0 — cached for 7 days, re-scan anytime.
+            </div>
+            {scanAllActive ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "var(--text3)" }}>
+                  {scanAllIdx + 1} / {RISING_SECTORS.length} sectors
+                </span>
+                <button
+                  onClick={stopScanAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1px solid var(--red)", background: "transparent", color: "var(--red)", fontSize: 12, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                >
+                  Stop All
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={startScanAll}
+                style={{ padding: "7px 16px", borderRadius: 7, border: "1px solid var(--gold)", background: "var(--gold)14", color: "var(--gold)", fontSize: 12, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                ⭐ Scan All
+              </button>
+            )}
           </div>
-          {RISING_SECTORS.map((sector) => <SectorRisingCard key={sector.id} sector={sector} />)}
+
+          {/* Scan All progress bar */}
+          {scanAllActive && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ height: 3, background: "var(--bg3)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: "var(--gold)", borderRadius: 2, transition: "width 0.4s", width: `${Math.round(((scanAllIdx) / RISING_SECTORS.length) * 100)}%` }} />
+              </div>
+            </div>
+          )}
+
+          {RISING_SECTORS.map((sector, i) => (
+            <SectorRisingCard
+              key={sector.id}
+              sector={sector}
+              triggerAt={scanAllTriggers[i]}
+              onScanDone={() => advanceScanAll(i)}
+            />
+          ))}
         </div>
       )}
 

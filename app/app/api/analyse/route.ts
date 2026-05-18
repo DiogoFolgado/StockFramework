@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { fetchAll } from "@/lib/yahoo/client";
-import { isCrypto, runStockScoring, signal } from "@/lib/scoring/engine";
+import { isCrypto, runStockScoring, runCryptoScoring, PILLARS, CRYPTO_PILLARS, signal } from "@/lib/scoring/engine";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,11 +16,9 @@ export async function POST(req: NextRequest) {
   try {
     const data = await fetchAll(tkr);
 
-    if (isCrypto(tkr)) {
-      return NextResponse.json({ error: "Crypto scoring not yet implemented server-side" }, { status: 400 });
-    }
-
-    const { scores, comp, sig } = runStockScoring(data);
+    const crypto = isCrypto(tkr);
+    const { scores, comp, sig } = crypto ? runCryptoScoring(data) : runStockScoring(data);
+    const pillars = crypto ? CRYPTO_PILLARS : PILLARS;
 
     const sector = data.p.finnhubIndustry ?? data.p.industry ?? data.p.sector ?? "—";
     const companyName = data.p.name ?? tkr;
@@ -42,11 +40,13 @@ export async function POST(req: NextRequest) {
       companyName,
       sector,
       scores,
+      pillars,
       composite: comp,
       signal: signal(comp),
       quote: data.q,
       profile: data.p,
       metrics: data.m,
+      isCrypto: crypto,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Analysis failed";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 interface HistoryRecord {
   id:          string;
@@ -47,6 +48,7 @@ export default function ScoresPage() {
     try {
       // Fetch all records (API already deduplicates by ticker + sorts by score desc)
       const res  = await fetch("/api/history?page=1&limit=2000");
+      if (!res.ok) return;
       const data = await res.json();
       setRecords(data.records ?? []);
     } finally { setLoading(false); }
@@ -58,7 +60,8 @@ export default function ScoresPage() {
 
   const filtered = records
     .filter(r => sector === "ALL" || r.sector === sector)
-    .filter(r => r.score >= minScore);
+    .filter(r => r.score >= minScore)
+    .sort((a, b) => b.score - a.score);
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 20px" }}>
@@ -114,8 +117,8 @@ export default function ScoresPage() {
         </div>
       ) : (
         <div style={{ background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2rem 1fr 1fr 1fr 180px", gap: 0, borderBottom: "1px solid var(--border2)", padding: "8px 16px" }}>
-            {["#", "TICKER", "COMPANY", "SECTOR", "SCORE"].map(h => (
+          <div style={{ display: "grid", gridTemplateColumns: "2rem 1fr 1fr 1fr 180px 80px", gap: 0, borderBottom: "1px solid var(--border2)", padding: "8px 16px" }}>
+            {["#", "TICKER", "COMPANY", "SECTOR", "SCORE", ""].map(h => (
               <div key={h} style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "var(--text3)", letterSpacing: 2 }}>{h}</div>
             ))}
           </div>
@@ -123,7 +126,7 @@ export default function ScoresPage() {
             <div
               key={r.id}
               style={{
-                display: "grid", gridTemplateColumns: "2rem 1fr 1fr 1fr 180px",
+                display: "grid", gridTemplateColumns: "2rem 1fr 1fr 1fr 180px 80px",
                 gap: 0, padding: "11px 16px", alignItems: "center",
                 borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none",
                 transition: "background .1s",
@@ -139,6 +142,17 @@ export default function ScoresPage() {
                 {scoreBar(r.score)}
                 <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sigColor(r.signal), letterSpacing: 1 }}>{r.signal}</span>
               </div>
+              <Link
+                href={`/?ticker=${r.ticker}`}
+                style={{
+                  fontFamily: "'Space Mono',monospace", fontSize: 9, letterSpacing: 1,
+                  color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: 5,
+                  padding: "4px 8px", textDecoration: "none", whiteSpace: "nowrap",
+                  display: "inline-block",
+                }}
+              >
+                ANALYSE →
+              </Link>
             </div>
           ))}
         </div>

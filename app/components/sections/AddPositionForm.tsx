@@ -158,7 +158,7 @@ export function AddPositionForm({ sectionId, onAdded, onCancel }: AddPositionFor
         <div style={{ flex: "0 0 80px" }}>
           <div style={labelStyle}>QTY</div>
           <input
-            type="number" min="0" step="0.0001" value={qty}
+            type="number" min="0" step="any" value={qty}
             onChange={e => setQty(e.target.value)}
             placeholder="optional"
             style={{ ...inputStyle, width: "100%" }}

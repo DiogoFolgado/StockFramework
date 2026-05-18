@@ -18,14 +18,14 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const page  = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20"));
+  const limit = Math.min(5000, parseInt(searchParams.get("limit") ?? "20"));
   const skip  = (page - 1) * limit;
 
-  // Fetch all records sorted by score desc so the first occurrence per ticker
-  // is always the best score — then deduplicate in memory.
+  // Fetch all records sorted by most recent first so the first occurrence per
+  // ticker is always the latest scan result — then deduplicate in memory.
   const all = await prisma.analysisHistory.findMany({
     where:   { userId: session.user.id },
-    orderBy: { score: "desc" },
+    orderBy: { analyzedAt: "desc" },
   });
 
   const seen = new Set<string>();

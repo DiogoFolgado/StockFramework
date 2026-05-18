@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PILLARS } from "@/lib/scoring/engine";
 import { SearchBar }      from "@/components/analysis/SearchBar";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorBanner }    from "@/components/ui/ErrorBanner";
+import { PillarBreakdownChart } from "@/components/analysis/PillarBreakdownChart";
 
 // ── Shared types ──────────────────────────────────────────────────────────────
-interface PillarResult { score: number; insights: string[]; verdict: string; }
+interface PillarResult { score: number; insights: string[]; verdict: string; deltas?: Array<{label: string; delta: number}>; }
 interface Metrics {
   peBasicExclExtraTTM?: number; epsTTM?: number; peForwardAnnual?: number;
   "52WeekHigh"?: number; "52WeekLow"?: number; "3MonthADTV"?: number;
@@ -22,6 +24,7 @@ interface AnalysisResult {
   profile: { name?: string; finnhubIndustry?: string; sector?: string; marketCapitalization?: number };
   metrics: Metrics;
   scores:  Record<string, PillarResult>;
+  isCrypto?: boolean;
 }
 interface Position {
   id: string; ticker: string; companyName: string;
@@ -133,11 +136,14 @@ function computeSection(sec: Section, quotes: Record<string, QuoteEntry>, usdToE
   let dailyPnl = 0, buyPnl = 0, curValue = 0, costBasis = 0;
   for (const p of sec.positions) {
     const q = quotes[p.ticker], qty = p.quantity ?? 0;
-    const fx = p.currency === "EUR" ? 1 : usdToEur;
     if (!q || qty === 0) continue;
-    const cv = qty * q.price * fx, pv = qty * q.prevClose * fx;
+    // Use quote's actual currency (USD/EUR from Yahoo) for current price conversion
+    const quoteFx = q.currency === "EUR" ? 1 : usdToEur;
+    // Use position's stored currency for purchase price conversion (how user entered it)
+    const costFx  = p.currency === "EUR" ? 1 : usdToEur;
+    const cv = qty * q.price * quoteFx, pv = qty * q.prevClose * quoteFx;
     dailyPnl += cv - pv; curValue += cv;
-    if (p.purchasePrice) { const cost = qty * p.purchasePrice * fx; buyPnl += cv - cost; costBasis += cost; }
+    if (p.purchasePrice) { const cost = qty * p.purchasePrice * costFx; buyPnl += cv - cost; costBasis += cost; }
   }
   const prevValue = curValue - dailyPnl;
   return {
@@ -343,8 +349,61 @@ function CreateForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ── Share Button ─────────────────────────────────────────────────────────────
+function ShareButton({ r }: { r: AnalysisResult }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied" | "error">("idle");
+
+  const share = async () => {
+    setState("loading");
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker: r.ticker,
+          companyName: r.companyName,
+          sector: r.sector,
+          composite: r.composite,
+          signal: r.signal,
+          scores: r.scores,
+          quote: r.quote,
+          metrics: r.metrics,
+          isCrypto: r.isCrypto ?? false,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Share failed");
+      await navigator.clipboard.writeText(`${window.location.origin}/share/${data.id}`);
+      setState("copied");
+      setTimeout(() => setState("idle"), 2500);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 2000);
+    }
+  };
+
+  const label = state === "loading" ? "…" : state === "copied" ? "✓ Copied!" : state === "error" ? "Error" : "⇡ Share";
+  const color = state === "copied" ? "var(--green)" : state === "error" ? "var(--red)" : "var(--text2)";
+
+  return (
+    <button
+      onClick={share}
+      disabled={state === "loading"}
+      style={{ background: "none", border: "1px solid var(--border2)", borderRadius: 6, color, fontSize: 11, fontFamily: "'Space Mono',monospace", padding: "4px 10px", cursor: state === "loading" ? "wait" : "pointer", transition: "color 0.2s" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── Analysis Result Panel ─────────────────────────────────────────────────────
-function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void }) {
+const PILLAR_BASE_SCORES: Record<string, number> = { fundamental: 5.0, technical: 5.0, entropy: 6.5, semantic: 5.0 };
+
+function AnalysisPanel({ r, onClose, onRefresh }: { r: AnalysisResult; onClose: () => void; onRefresh: () => void }) {
+  const [openBreakdowns, setOpenBreakdowns] = useState<Set<string>>(new Set());
+  const toggleBreakdown = (id: string) => setOpenBreakdowns(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
   const cur = r.quote.c, pc = r.quote.pc;
   const chg = cur != null && pc != null ? cur - pc : null;
   const chgPct = chg != null && pc ? (chg / pc * 100) : null;
@@ -368,7 +427,11 @@ function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void 
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
         <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"var(--text3)" }}>⏱ {new Date().toLocaleString()} · {r.ticker}</div>
-        <button onClick={onClose} style={{ background:"none", border:"1px solid var(--border2)", borderRadius:6, color:"var(--text2)", fontSize:11, fontFamily:"'Space Mono',monospace", padding:"4px 10px", cursor:"pointer" }}>✕ Close</button>
+        <div style={{ display:"flex", gap:8 }}>
+          <ShareButton r={r} />
+          <button onClick={onRefresh} style={{ background:"none", border:"1px solid var(--border2)", borderRadius:6, color:"var(--text2)", fontSize:11, fontFamily:"'Space Mono',monospace", padding:"4px 10px", cursor:"pointer" }}>↻ Refresh</button>
+          <button onClick={onClose}   style={{ background:"none", border:"1px solid var(--border2)", borderRadius:6, color:"var(--text2)", fontSize:11, fontFamily:"'Space Mono',monospace", padding:"4px 10px", cursor:"pointer" }}>✕ Close</button>
+        </div>
       </div>
 
       {/* HERO */}
@@ -403,7 +466,7 @@ function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void 
             { label:"52W LOW",    val:l52 ? "$"+fmtP(l52,2) : "—" },
             { label:"AVG VOL",    val:fmtVol(r.metrics["3MonthADTV"] ? r.metrics["3MonthADTV"]! * 1e6 : undefined) },
             { label:"BETA",       val:beta ? fmtP(beta,2) : "—" },
-            { label:"DIV YIELD",  val:r.metrics.dividendYieldIndicatedAnnual ? fmtP(r.metrics.dividendYieldIndicatedAnnual,2)+"%" : "None" },
+            { label:"DIV YIELD",  val:r.metrics.dividendYieldIndicatedAnnual ? fmtP(r.metrics.dividendYieldIndicatedAnnual,2)+"%" : "—" },
             { label:"FWD P/E",    val:r.metrics.peForwardAnnual ? fmtP(r.metrics.peForwardAnnual,1)+"x" : "—" },
           ].map(({ label, val }) => (
             <div key={label} style={{ padding:"4px 20px 4px 0", minWidth:90 }}>
@@ -464,10 +527,19 @@ function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(245px,1fr))", gap:11, marginBottom:14 }}>
         {PILLARS.map(pl => {
           const s = r.scores[pl.id]; if (!s) return null;
+          const isOpen = openBreakdowns.has(pl.id);
+          const hasDeltas = (s.deltas?.length ?? 0) > 0;
           return (
             <div key={pl.id} style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:16, position:"relative", overflow:"hidden" }}>
               <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:pl.color }} />
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"var(--text3)", letterSpacing:2, marginBottom:8 }}>{pl.icon} {pl.label} · {pl.wLabel}</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"var(--text3)", letterSpacing:2, marginBottom:8, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span>{pl.icon} {pl.label} · {pl.wLabel}</span>
+                {hasDeltas && (
+                  <button onClick={() => toggleBreakdown(pl.id)} style={{ background: isOpen ? pl.color + "22" : "transparent", border:`1px solid ${isOpen ? pl.color : "var(--border)"}`, borderRadius:4, padding:"2px 7px", cursor:"pointer", fontSize:9, color: isOpen ? pl.color : "var(--text3)", fontFamily:"'Space Mono',monospace", letterSpacing:"0.05em", transition:"all 0.15s" }}>
+                    {isOpen ? "▲ why" : "▼ why"}
+                  </button>
+                )}
+              </div>
               <div style={{ fontSize:13, fontWeight:600, color:pl.color, marginBottom:4 }}>{s.verdict}</div>
               <ul style={{ margin:"0 0 10px 14px", padding:0, fontSize:12, color:"var(--text2)", lineHeight:1.8 }}>
                 {s.insights.map((ins,i) => <li key={i}>{ins}</li>)}
@@ -477,6 +549,16 @@ function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void 
               <div style={{ height:4, background:"var(--border)", borderRadius:2 }}>
                 <div style={{ height:4, width:`${s.score*10}%`, background:pl.color, borderRadius:2 }} />
               </div>
+              {isOpen && s.deltas && s.deltas.length > 0 && (
+                <div style={{ borderTop:"1px solid var(--border)", marginTop:12, paddingTop:4 }}>
+                  <PillarBreakdownChart
+                    deltas={s.deltas}
+                    base={PILLAR_BASE_SCORES[pl.id] ?? 5.0}
+                    pillarColor={pl.color}
+                    finalScore={s.score}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -509,6 +591,151 @@ function AnalysisPanel({ r, onClose }: { r: AnalysisResult; onClose: () => void 
   );
 }
 
+// ── Portfolio Breakdown Modal ─────────────────────────────────────────────────
+function PortfolioBreakdownModal({
+  sections, quotes, usdToEur, onClose,
+}: {
+  sections: Section[]; quotes: Record<string, QuoteEntry>; usdToEur: number; onClose: () => void;
+}) {
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  const items = sections
+    .map(sec => ({ sec, value: computeSection(sec, quotes, usdToEur).curValue }))
+    .filter(x => x.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const total    = items.reduce((s, x) => s + x.value, 0);
+  const excluded = sections.length - items.length;
+
+  // Donut chart geometry
+  const cx = 100, cy = 100, R = 78, r = 46;
+  let angle = -Math.PI / 2;
+  const segments = items.map(({ sec, value }) => {
+    const pct = total > 0 ? value / total : 0;
+    const start = angle;
+    angle += pct * 2 * Math.PI;
+    return { sec, value, pct, start, end: angle };
+  });
+
+  function donutPath(start: number, end: number): string {
+    const span = end - start;
+    if (span >= 2 * Math.PI - 0.001) {
+      return `M ${cx + R} ${cy} A ${R} ${R} 0 1 1 ${cx - R} ${cy} A ${R} ${R} 0 1 1 ${cx + R} ${cy} ` +
+             `M ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} Z`;
+    }
+    const cosS = Math.cos(start), sinS = Math.sin(start);
+    const cosE = Math.cos(end),   sinE = Math.sin(end);
+    const large = span > Math.PI ? 1 : 0;
+    return `M ${cx + R * cosS} ${cy + R * sinS} A ${R} ${R} 0 ${large} 1 ${cx + R * cosE} ${cy + R * sinE} ` +
+           `L ${cx + r * cosE} ${cy + r * sinE} A ${r} ${r} 0 ${large} 0 ${cx + r * cosS} ${cy + r * sinS} Z`;
+  }
+
+  const hovSeg = segments.find(s => s.sec.id === hovered) ?? null;
+
+  return (
+    <div
+      style={{ position:"fixed", inset:0, zIndex:999, background:"rgba(0,0,0,.65)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:"var(--radius)", padding:"24px 28px", maxWidth:680, width:"100%", maxHeight:"85vh", overflow:"auto" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+          <div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"var(--text3)", letterSpacing:2, marginBottom:4 }}>PORTFOLIO BREAKDOWN</div>
+            <div style={{ fontSize:13, color:"var(--text2)" }}>Allocation by section (based on current market value)</div>
+          </div>
+          <button onClick={onClose} style={{ background:"none", border:"1px solid var(--border2)", borderRadius:6, color:"var(--text2)", fontSize:11, fontFamily:"'Space Mono',monospace", padding:"5px 12px", cursor:"pointer" }}>
+            ✕ Close
+          </button>
+        </div>
+
+        {items.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"40px 0", color:"var(--text3)", fontFamily:"'Space Mono',monospace", fontSize:12 }}>
+            No positions with live price data yet
+          </div>
+        ) : (
+          <>
+            <div style={{ display:"flex", gap:28, alignItems:"flex-start", flexWrap:"wrap" }}>
+              {/* Donut chart */}
+              <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center" }}>
+                <svg viewBox="0 0 200 200" width={190} height={190}>
+                  {segments.map(({ sec, start, end }) => (
+                    <path
+                      key={sec.id}
+                      d={donutPath(start, end)}
+                      fill={sec.color}
+                      opacity={hovered && hovered !== sec.id ? 0.3 : 1}
+                      stroke="var(--bg2)"
+                      strokeWidth={2.5}
+                      onMouseEnter={() => setHovered(sec.id)}
+                      onMouseLeave={() => setHovered(null)}
+                      style={{ cursor:"default", transition:"opacity 0.15s" }}
+                    />
+                  ))}
+                  {/* Center label */}
+                  {hovSeg ? (
+                    <>
+                      <text x={cx} y={cy - 7} textAnchor="middle" fill="var(--text3)" fontSize={8} fontFamily="Space Mono,monospace" letterSpacing={0.5}>
+                        {hovSeg.sec.name.toUpperCase().slice(0, 13)}
+                      </text>
+                      <text x={cx} y={cy + 10} textAnchor="middle" fill={hovSeg.sec.color} fontSize={17} fontFamily="Space Mono,monospace" fontWeight="bold">
+                        {(hovSeg.pct * 100).toFixed(1)}%
+                      </text>
+                    </>
+                  ) : (
+                    <>
+                      <text x={cx} y={cy - 7} textAnchor="middle" fill="var(--text3)" fontSize={9} fontFamily="Space Mono,monospace" letterSpacing={1}>
+                        INVESTED
+                      </text>
+                      <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--text)" fontSize={13} fontFamily="Space Mono,monospace" fontWeight="bold">
+                        {`€${fmtEur(total)}`}
+                      </text>
+                    </>
+                  )}
+                </svg>
+              </div>
+
+              {/* Legend / list */}
+              <div style={{ flex:1, minWidth:220 }}>
+                {segments.map(({ sec, value, pct }) => (
+                  <div
+                    key={sec.id}
+                    onMouseEnter={() => setHovered(sec.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8, background:hovered === sec.id ? "var(--bg3)" : "transparent", marginBottom:4, cursor:"default", transition:"background 0.15s" }}
+                  >
+                    <div style={{ width:10, height:10, borderRadius:2, background:sec.color, flexShrink:0 }} />
+                    <span style={{ fontSize:15 }}>{sec.icon}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sec.name}</div>
+                      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"var(--text3)" }}>€{fmtEur(value)}</div>
+                    </div>
+                    <div style={{ fontFamily:"'Space Mono',monospace", fontSize:13, fontWeight:700, color:sec.color, minWidth:48, textAlign:"right" }}>
+                      {(pct * 100).toFixed(1)}%
+                    </div>
+                    <div style={{ width:56, height:4, background:"var(--border)", borderRadius:2, flexShrink:0 }}>
+                      <div style={{ width:`${pct * 100}%`, height:4, background:sec.color, borderRadius:2 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {excluded > 0 && (
+              <div style={{ marginTop:16, textAlign:"center", fontFamily:"'Space Mono',monospace", fontSize:10, color:"var(--text3)" }}>
+                {excluded} section{excluded !== 1 ? "s" : ""} without live price data not shown
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const CASH_KEY = "sf_cash_v1";
 
@@ -527,7 +754,10 @@ export default function HomePage() {
   const [cashEur,   setCashEur]   = useState(0);
   const [cashUsd,   setCashUsd]   = useState(0);
   const [cashHidden, setCashHidden] = useState(false);
-  const quotesFetched = useRef(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const quotesFetched  = useRef(false);
+  const analysisFired  = useRef(false);
+  const searchParams   = useSearchParams();
 
   // Load cash from localStorage
   useEffect(() => {
@@ -535,6 +765,15 @@ export default function HomePage() {
       const raw = localStorage.getItem(CASH_KEY);
       if (raw) { const c = JSON.parse(raw); setCashEur(c.eur ?? 0); setCashUsd(c.usd ?? 0); }
     } catch { /* ignore */ }
+  }, []);
+
+  // Auto-analyse when navigated here with ?ticker=XYZ (e.g. from Scores page)
+  // Ref guard prevents StrictMode double-fire from sending two simultaneous API calls.
+  useEffect(() => {
+    if (analysisFired.current) return;
+    const t = searchParams.get("ticker");
+    if (t) { analysisFired.current = true; analyse(t.toUpperCase().trim()); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function saveCash(eur: number, usd: number) {
@@ -546,6 +785,7 @@ export default function HomePage() {
     setPortLoading(true);
     try {
       const res  = await fetch("/api/sections");
+      if (!res.ok) return [];
       const data = await res.json();
       const secs: Section[] = data.sections ?? [];
       setSections(secs);
@@ -637,7 +877,17 @@ export default function HomePage() {
 
       {/* ── Analysis Results ── */}
       {result && !analysisLoading && (
-        <AnalysisPanel r={result} onClose={() => { setResult(null); setAnalysisError(null); }} />
+        <AnalysisPanel r={result} onClose={() => { setResult(null); setAnalysisError(null); }} onRefresh={() => analyse(result.ticker)} />
+      )}
+
+      {/* ── Portfolio Breakdown Modal ── */}
+      {showBreakdown && (
+        <PortfolioBreakdownModal
+          sections={sections}
+          quotes={quotes}
+          usdToEur={usdToEur}
+          onClose={() => setShowBreakdown(false)}
+        />
       )}
 
       {/* ── Portfolio Dashboard (shown when no analysis active) ── */}
@@ -672,10 +922,16 @@ export default function HomePage() {
           {/* Sections Header */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
             <span style={{ fontFamily:"'Space Mono',monospace", fontSize:11, color:"var(--text3)", letterSpacing:2 }}>MY SECTIONS</span>
-            <button onClick={() => setCreating(c => !c)}
-              style={{ padding:"7px 16px", background:"linear-gradient(135deg,var(--gold),#f0c870)", color:"#07070f", border:"none", borderRadius:7, fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"'Space Grotesk',sans-serif" }}>
-              + New Section
-            </button>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => setShowBreakdown(true)}
+                style={{ padding:"7px 16px", background:"none", border:"1px solid var(--border2)", borderRadius:7, fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"'Space Grotesk',sans-serif", color:"var(--text2)" }}>
+                % Breakdown
+              </button>
+              <button onClick={() => setCreating(c => !c)}
+                style={{ padding:"7px 16px", background:"linear-gradient(135deg,var(--gold),#f0c870)", color:"#07070f", border:"none", borderRadius:7, fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"'Space Grotesk',sans-serif" }}>
+                + New Section
+              </button>
+            </div>
           </div>
 
           {creating && <CreateForm onCreated={handleCreated} />}

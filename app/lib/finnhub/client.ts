@@ -59,3 +59,16 @@ export async function getEarningsCalendar(from: string, to: string, symbol?: str
   const q = symbol ? `&symbol=${symbol}` : "";
   return fh<{ earningsCalendar: EarningsCalendarItem[] }>(`/calendar/earnings?from=${from}&to=${to}${q}`);
 }
+
+export async function getCompanyNews(symbol: string, from: string, to: string): Promise<MarketNewsItem[]> {
+  return fh<MarketNewsItem[]>(`/company-news?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}`);
+}
+
+export interface ForexRates {
+  base: string;
+  quote: Record<string, number>;
+}
+
+export async function getForexRates(base: "USD" | "EUR" = "USD"): Promise<ForexRates> {
+  return fh<ForexRates>(`/forex/rates?base=${base}`);
+}

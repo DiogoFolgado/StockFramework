@@ -33,6 +33,7 @@ export default function SectionsPage() {
     setLoading(true);
     try {
       const res  = await fetch("/api/sections");
+      if (!res.ok) return;
       const data = await res.json();
       setSections(data.sections ?? []);
     } finally {
