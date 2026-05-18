@@ -1,50 +1,55 @@
 # StockFramework
 
-Research-grade stock analysis application built with Next.js 16, React 19, and TypeScript. Uses a four-pillar scoring engine to evaluate stocks across Fundamental, Technical, Entropy, and Semantic dimensions.
+Research-grade stock analysis and portfolio management platform built with Next.js 16, React 19, PostgreSQL, and Claude AI.
 
 ---
 
 ## Features
 
 ### Stock Analysis
-- Four-pillar composite scoring system: **Fundamental (30%)**, **Technical (35%)**, **Entropy (10%)**, **Semantic (25%)**
-- Live quote data via Yahoo Finance
+- **Four-pillar composite scoring**: Fundamental (30%), Technical (35%), Entropy (10%), Semantic (25%)
+- Live quote data via Yahoo Finance and Finnhub
 - Analyst sentiment, price targets, earnings, and sector context
 - Signal output: STRONG BUY / BUY / NEUTRAL / SELL / STRONG SELL
+- **Pillar breakdown chart** with delta indicators and per-pillar insights
+- **Shareable analysis links** — generate a public URL for any result
 
-### Portfolio Management
-- Create sections (watchlists) with custom icons and colours
+### Portfolio Suite
+- **DCA Optimizer** — optimal buy-in schedule based on historical volatility
+- **Correlation Matrix** — cross-asset correlation heatmap for your positions
+- **Entropy / Regime Detection** — market regime alerts (Normal / Elevated / High) with hotspot tickers
+- **FX Hedging Panel** — currency exposure and hedging suggestions
+- **Rebalance Panel** — target-weight drift analysis and rebalance orders
+- **Scenario Tester** — stress-test portfolio under custom macro shocks
+- **Sentiment Panel** — AI-powered news sentiment per holding
+- **AI Suggestions** — Claude-generated portfolio improvement recommendations
+- **Risk Dashboard** — consolidated risk metrics across all positions
+
+### Markets & Discovery
+- **Markets overview** — broad market snapshot across indices and asset classes
+- **Stock Compare** — side-by-side pillar score comparison for multiple tickers
+- **Sector Scanner** — 13 market sectors with live daily relative performance; Rising Stars scanner surfaces stocks ≥ 7.0
+- **Top Scores** — leaderboard of highest-scoring stocks from your analysis history
+
+### Watchlists
+- **Sections** — custom watchlists with icons, colours, and position tracking
 - Track positions with purchase price, quantity, and currency
-- Live daily P&L and total portfolio worth
-- Cash balance tracker (EUR + USD) with hide/show toggle
+- **Section snapshots** — daily P&L and avg % change history per section
+
+### Podcast
+- Finance podcast browser powered by the iTunes API
+- AI-generated episode summaries via Claude
+- New-episode notifications per user
 
 ### Stock AI Advisor
-- Floating chat widget powered by **Claude Haiku**
+- Floating chat widget powered by Claude
 - Context-aware: reads your portfolio sections and positions
 - Answers questions about stocks, market trends, and investment strategy
-- Concise, no-fluff responses — 1–4 sentences by default
 
-### Market Clock
-- Live NYSE countdown in the navbar
-- Shows time remaining until market opens or closes
-- DST-aware, handles weekends and NYSE holidays through 2026
-- Green dot when open, red dot when closed
-
-### Scores Page
-- All analysed stocks ranked by composite score
-- Filter by sector and minimum score threshold
-- Deduplicates by ticker — shows best score per stock
-
-### Sectors
-- Daily sector performance overview
-- Rising star scan via Server-Sent Events (SSE)
-
-### News
+### Auth & History
+- Email / password authentication (NextAuth v5 + bcrypt)
+- Per-user analysis history with full pillar scores stored and paginated
 - Market news, IPO calendar, and earnings calendar via Finnhub
-
-### History
-- Full analysis history per user, paginated
-- Section-level daily snapshots with cumulative P&L tracking
 
 ---
 
@@ -52,12 +57,13 @@ Research-grade stock analysis application built with Next.js 16, React 19, and T
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16.2 (Turbopack) |
-| UI | React 19, TypeScript 5, Tailwind CSS 4 |
+| Framework | Next.js 16 (App Router, standalone output) |
+| UI | React 19, TypeScript 5, Tailwind CSS 4, Recharts |
 | Database | PostgreSQL + Prisma 7 |
-| Auth | NextAuth 5 (credentials) |
-| AI | Anthropic Claude Haiku (`@anthropic-ai/sdk`) |
-| Data | Yahoo Finance (proxy), Finnhub API |
+| Auth | NextAuth v5 (credentials, `@auth/prisma-adapter`) |
+| AI | Anthropic Claude (`@anthropic-ai/sdk`) |
+| Data | Yahoo Finance (Cloudflare Worker proxy), Finnhub API |
+| Testing | Vitest + `@vitest/coverage-v8` |
 
 ---
 
@@ -66,7 +72,7 @@ Research-grade stock analysis application built with Next.js 16, React 19, and T
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL 15+ running locally
+- PostgreSQL 15+
 
 ### 1. Clone and install
 
@@ -78,30 +84,36 @@ npm install
 
 ### 2. Configure environment variables
 
-Create a `.env` file in `StockFramework/app/`:
+Create `.env.local` in `StockFramework/app/`:
 
 ```env
 # Database
-DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/stockframework?schema=public"
+DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/stockframework"
 
 # Auth
-NEXTAUTH_SECRET="your-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
+AUTH_SECRET="run: openssl rand -base64 32"
 
 # Data APIs
 FINNHUB_API_KEY="your-finnhub-key"
 
-# AI Advisor
+# AI (portfolio suggestions, podcast summaries, chat advisor)
 ANTHROPIC_API_KEY="sk-ant-..."
+
+# Optional — defaults to the project's Cloudflare Worker
+# YAHOO_WORKER_URL="https://your-worker.workers.dev"
 ```
 
-> **ANTHROPIC_API_KEY** is required for the Stock AI Advisor chat. Get a key at [console.anthropic.com](https://console.anthropic.com).  
-> **FINNHUB_API_KEY** is required for news, IPO, and earnings data. Free tier available at [finnhub.io](https://finnhub.io).
+| Key | Where to get it |
+|---|---|
+| `FINNHUB_API_KEY` | [finnhub.io/register](https://finnhub.io/register) — free tier, no credit card |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| `AUTH_SECRET` | `openssl rand -base64 32` |
 
 ### 3. Set up the database
 
 ```bash
-npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma generate
 ```
 
 ### 4. Run the development server
@@ -117,33 +129,39 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Project Structure
 
 ```
-app/
-├── app/
-│   ├── page.tsx              # Home — analysis + portfolio dashboard
-│   ├── scores/               # Stock score rankings
-│   ├── sectors/              # Sector overview + rising star scan
-│   ├── sections/             # Watchlist sections + position detail
-│   ├── history/              # Analysis history + section snapshots
-│   ├── news/                 # Market news, IPO, earnings
-│   ├── how-it-works/         # Scoring methodology
-│   └── api/                  # API routes (analyse, chat, history, sections, …)
-├── components/
-│   ├── analysis/             # SearchBar, StockHeader, ScoreCard, PillarCard
-│   ├── chat/                 # AiAdvisor (floating chat widget)
-│   ├── navigation/           # NavBar, MarketClock
-│   ├── news/                 # NewsCard, IPOTable, EarningsTable
-│   ├── sections/             # SectionCard, PositionTable, CreateSectionForm
-│   ├── sectors/              # StockRow, ScanResultItem
-│   ├── history/              # HistoryTable, PaginationControls
-│   └── ui/                   # Card, Badge, Button, LoadingSpinner, ErrorBanner, TabNav
-├── lib/
-│   ├── scoring/engine.ts     # Four-pillar scoring logic
-│   ├── yahoo/client.ts       # Yahoo Finance data client
-│   ├── sectors/data.ts       # Sector definitions
-│   ├── utils/                # Color helpers, formatters
-│   └── auth.ts               # NextAuth configuration
-└── prisma/
-    └── schema.prisma         # Database schema
+StockFramework/
+├── app/                         # Next.js application
+│   ├── app/
+│   │   ├── (auth)/              # Login / register
+│   │   ├── (dashboard)/podcast/ # Podcast browser
+│   │   ├── compare/             # Stock compare
+│   │   ├── history/             # Analysis history
+│   │   ├── how-it-works/        # Scoring methodology explainer
+│   │   ├── markets/             # Markets overview
+│   │   ├── news/                # News, IPO, earnings
+│   │   ├── portfolio/           # Portfolio suite
+│   │   ├── scores/              # Top scores leaderboard
+│   │   ├── sections/            # Watchlist sections
+│   │   ├── sectors/             # Sector scanner
+│   │   ├── share/[id]/          # Public shared analysis
+│   │   └── api/                 # API routes
+│   ├── components/
+│   │   ├── analysis/            # PillarCard, PillarBreakdownChart, SearchBar
+│   │   ├── navigation/          # NavBar
+│   │   ├── podcast/             # EpisodeCard, NotificationBanner, PodcastHeader
+│   │   ├── portfolio/           # All portfolio panel components
+│   │   └── sections/            # AddPositionForm
+│   ├── lib/
+│   │   ├── db/                  # Prisma client singleton
+│   │   ├── finnhub/             # Finnhub API client
+│   │   ├── podcast/             # iTunes fetch + Claude summarise
+│   │   ├── scoring/             # Four-pillar scoring engine + tests
+│   │   ├── sectors/             # Sector definitions
+│   │   └── yahoo/               # Yahoo Finance proxy client
+│   └── prisma/schema.prisma
+├── docs/README.md               # Extended documentation
+├── env/                         # Environment variable files (gitignored)
+└── specs/                       # Scoring engine and API specs
 ```
 
 ---
@@ -166,6 +184,19 @@ Composite score 0–10:
 | ≥ 5.5 | NEUTRAL |
 | ≥ 4.0 | SELL |
 | < 4.0 | STRONG SELL |
+
+---
+
+## Scripts
+
+```bash
+npm run dev           # Development server
+npm run build         # Production build
+npm run start         # Start production server
+npm run test          # Run tests (Vitest)
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
+```
 
 ---
 
